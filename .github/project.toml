@@ -51,3 +51,23 @@ branch_pattern = "^[^/]+/[^/]+/(\\d+)/.*$"
 # Whether to ignore Draft PRs
 # true = skip draft PRs, false = process draft PRs too
 ignore_draft = false
+
+[tag]
+# Auto Tag Configuration
+# These settings control the auto-tag workflow for semantic versioning
+
+# Labels that trigger MAJOR version increment (X.0.0)
+# Use for breaking changes or major releases
+major_labels = ["release"]
+
+# Labels that trigger MINOR version increment (0.X.0)
+# Use for new features that are backward compatible
+minor_labels = ["feature"]
+
+# Labels that trigger PATCH version increment (0.0.X)
+# Use for bug fixes and small improvements
+patch_labels = ["bugfix", "fix", "patch", "hotfix"]
+
+# All other labels (e.g., refactor, docs, chore) will only increment
+# the RC counter when merged to develop, and default to PATCH when
+# merged directly to main.
