@@ -19,6 +19,7 @@ jobs:
   add-to-project:
     name: Add Issue to Project
     runs-on: ubuntu-latest
+    environment: project
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

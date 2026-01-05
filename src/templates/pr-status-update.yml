@@ -23,6 +23,7 @@ jobs:
   update-status:
     name: Update Issue Status
     runs-on: ubuntu-latest
+    environment: project
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
