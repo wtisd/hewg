@@ -1,3 +1,4 @@
+/// <reference lib="deno.ns" />
 /**
  * Auto-tag command for semantic versioning
  *
@@ -74,36 +75,37 @@ function parseToml(content: string): Record<string, Record<string, unknown>> {
     // Key-value pair
     const kvMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/);
     if (kvMatch && currentSection) {
-      let value: unknown = kvMatch[2].trim();
+      const rawValue = kvMatch[2].trim();
+      let value: unknown = rawValue;
 
       // Remove quotes from strings
       if (
-        (typeof value === 'string' && value.startsWith('"') && value.endsWith('"')) ||
-        (typeof value === 'string' && value.startsWith("'") && value.endsWith("'"))
+        (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+        (rawValue.startsWith("'") && rawValue.endsWith("'"))
       ) {
-        value = value.slice(1, -1);
+        value = rawValue.slice(1, -1);
       } // Parse arrays
-      else if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+      else if (rawValue.startsWith('[') && rawValue.endsWith(']')) {
         try {
-          value = JSON.parse(value.replace(/'/g, '"'));
+          value = JSON.parse(rawValue.replace(/'/g, '"'));
         } catch {
           // If JSON parse fails, try manual parsing
-          value = value
+          value = rawValue
             .slice(1, -1)
             .split(',')
             .map((s: string) => s.trim().replace(/^["']|["']$/g, ''))
             .filter((s: string) => s);
         }
       } // Parse booleans
-      else if (value === 'true') {
+      else if (rawValue === 'true') {
         value = true;
-      } else if (value === 'false') {
+      } else if (rawValue === 'false') {
         value = false;
       } // Parse numbers
-      else if (typeof value === 'string' && /^\d+$/.test(value)) {
-        value = parseInt(value, 10);
-      } else if (typeof value === 'string' && /^\d+\.\d+$/.test(value)) {
-        value = parseFloat(value);
+      else if (/^\d+$/.test(rawValue)) {
+        value = parseInt(rawValue, 10);
+      } else if (/^\d+\.\d+$/.test(rawValue)) {
+        value = parseFloat(rawValue);
       }
 
       result[currentSection][kvMatch[1]] = value;
@@ -320,6 +322,10 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     Deno.exit(1);
   }
 
+  // Type narrowing: after validation, these are guaranteed to be strings
+  const source: string = sourceBranch;
+  const target: string = targetBranch;
+
   try {
     // Load configuration
     const config = await loadConfig(configPath);
@@ -331,16 +337,16 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     const currentVersion = parseVersion(latestTag);
 
     // Check if this is a develop -> main merge
-    const isDevelopToMain = targetBranch === 'main' && sourceBranch === 'develop';
+    const isDevelopToMain = target === 'main' && source === 'develop';
 
     // Extract label from source branch
-    const label = extractLabel(sourceBranch);
+    const label = extractLabel(source);
 
     // Get increment type
     const incrementType = getIncrementType(label, config);
 
     // Calculate new version
-    const newTag = calculateNewVersion(currentVersion, incrementType, targetBranch, isDevelopToMain);
+    const newTag = calculateNewVersion(currentVersion, incrementType, target, isDevelopToMain);
 
     const result: AutoTagResult = {
       success: true,
@@ -348,7 +354,7 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
       newTag,
       label,
       incrementType,
-      targetBranch,
+      targetBranch: target,
       isDevelopToMain,
     };
 
@@ -357,8 +363,8 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     } else {
       console.log(colors.highlight('\n🏷️  Auto Tag Calculator\n'));
       console.log(`${colors.muted('Current tag:')} ${latestTag || '(none, starting from v0.0.0)'}`);
-      console.log(`${colors.muted('Source branch:')} ${sourceBranch}`);
-      console.log(`${colors.muted('Target branch:')} ${targetBranch}`);
+      console.log(`${colors.muted('Source branch:')} ${source}`);
+      console.log(`${colors.muted('Target branch:')} ${target}`);
       console.log(`${colors.muted('Label:')} ${label}`);
       console.log(`${colors.muted('Increment type:')} ${incrementType}`);
       console.log(`${colors.muted('Is develop→main:')} ${isDevelopToMain}`);
