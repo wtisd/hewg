@@ -34,3 +34,20 @@ status = "Planned"
 
 # Target date (YYYY-MM-DD format)
 # target_date = "2026-01-12"
+
+[pr]
+# Pull Request Status Update Configuration
+# These settings control the pr-status-update workflow
+
+# Status to set when a PR is opened or reopened
+# Must match an existing status option in your project
+review_status = "In Review"
+
+# Branch name pattern for extracting Issue numbers (regex)
+# Default pattern matches: label/author/{issue_number}/title
+# The first capture group should contain the Issue number
+branch_pattern = "^[^/]+/[^/]+/(\\d+)/.*$"
+
+# Whether to ignore Draft PRs
+# true = skip draft PRs, false = process draft PRs too
+ignore_draft = false

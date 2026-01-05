@@ -21,6 +21,9 @@ services:
 
       # Github Cli Settings
       - ~/.config/gh:/home/node/.config/gh:cached
+      # ssh config and host_config
+      - ~/.dotfiles/ssh/config:/home/node/.ssh/config:cached
+      - ~/.dotfiles/ssh/host_config:/home/node/.ssh/host_config:cached
     working_dir: /workspace
     # Keep the container running
     command: sleep infinity

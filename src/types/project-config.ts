@@ -2,7 +2,9 @@
  * GitHub Project configuration types
  *
  * This module defines the types for the `.github/project.toml` configuration file
- * used by the Issue-to-Project GitHub Actions workflow.
+ * used by the GitHub Actions workflows:
+ * - Issue-to-Project: Automatically adds new Issues to a GitHub Project
+ * - PR Status Update: Updates Issue status when a PR is opened/reopened
  *
  * @module
  */
@@ -52,6 +54,33 @@ export interface ProjectSection {
 }
 
 /**
+ * Pull Request related configuration
+ *
+ * Controls the behavior of the pr-status-update workflow
+ */
+export interface PrConfig {
+  /**
+   * Status to set when a PR is opened or reopened
+   * Must match an existing status option in the Project
+   * @default "In Review"
+   */
+  reviewStatus?: string;
+
+  /**
+   * Regular expression pattern for extracting Issue numbers from branch names
+   * The first capture group should contain the Issue number
+   * @default "^[^/]+/[^/]+/(\\d+)/.*$" (matches label/author/{issue_number}/title)
+   */
+  branchPattern?: string;
+
+  /**
+   * Whether to skip Draft PRs
+   * @default false
+   */
+  ignoreDraft?: boolean;
+}
+
+/**
  * Complete project configuration structure
  *
  * @example
@@ -62,14 +91,22 @@ export interface ProjectSection {
  * [defaults]
  * status = "Planned"
  * priority = "P1"
+ *
+ * [pr]
+ * review_status = "In Review"
+ * branch_pattern = "^[^/]+/[^/]+/(\\d+)/.*$"
+ * ignore_draft = false
  * ```
  */
 export interface ProjectConfig {
   /** Project section containing the project URL */
   project: ProjectSection;
 
-  /** Optional default field values */
+  /** Optional default field values for new Issues */
   defaults?: ProjectDefaults;
+
+  /** Optional PR-related configuration */
+  pr?: PrConfig;
 }
 
 /**
@@ -210,6 +247,41 @@ export function validateProjectConfig(config: unknown): asserts config is Projec
       if (typeof targetDate !== 'string' || !dateRegex.test(targetDate)) {
         throw new Error('defaults.target_date must be in YYYY-MM-DD format');
       }
+    }
+  }
+
+  // Validate pr section if present
+  if (cfg.pr !== undefined) {
+    if (typeof cfg.pr !== 'object' || cfg.pr === null) {
+      throw new Error('pr must be an object');
+    }
+
+    const pr = cfg.pr as Record<string, unknown>;
+
+    // Validate review_status (TOML uses snake_case)
+    const reviewStatus = pr['review_status'];
+    if (reviewStatus !== undefined && typeof reviewStatus !== 'string') {
+      throw new Error('pr.review_status must be a string');
+    }
+
+    // Validate branch_pattern
+    const branchPattern = pr['branch_pattern'];
+    if (branchPattern !== undefined) {
+      if (typeof branchPattern !== 'string') {
+        throw new Error('pr.branch_pattern must be a string');
+      }
+      // Try to compile the regex to validate it
+      try {
+        new RegExp(branchPattern);
+      } catch {
+        throw new Error(`pr.branch_pattern is not a valid regex: ${branchPattern}`);
+      }
+    }
+
+    // Validate ignore_draft
+    const ignoreDraft = pr['ignore_draft'];
+    if (ignoreDraft !== undefined && typeof ignoreDraft !== 'boolean') {
+      throw new Error('pr.ignore_draft must be a boolean');
     }
   }
 }
