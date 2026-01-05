@@ -8,6 +8,7 @@
 
 import { createCli } from './cli/mod.ts';
 import { helloCommand } from './cli/commands/hello.ts';
+import { setupActionsCommand } from './cli/commands/setup-actions.ts';
 import { versionCommand } from './cli/commands/version.ts';
 
 const cli = createCli({
@@ -18,6 +19,7 @@ const cli = createCli({
 
 // Register built-in commands
 cli.register(helloCommand);
+cli.register(setupActionsCommand);
 cli.register(versionCommand);
 
 // Run the CLI
