@@ -18,7 +18,8 @@ import * as colors from '../colors.ts';
  */
 function getTemplatesDir(): string {
   const currentFile = fromFileUrl(import.meta.url);
-  return join(dirname(dirname(currentFile)), 'templates');
+  // Go up from src/cli/commands/ to src/ then join with templates
+  return join(dirname(dirname(dirname(currentFile))), 'templates');
 }
 
 /**
