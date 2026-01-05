@@ -240,6 +240,53 @@ This project includes CI/CD workflows:
   - Builds binaries for Linux, macOS, and Windows
   - Creates GitHub release with artifacts
 
+### Issue-to-Project Automation
+
+Automatically link new Issues to your GitHub Project:
+
+```bash
+deno task setup:actions
+```
+
+This creates:
+
+- `.github/workflows/issue-to-project.yml` - GitHub Actions workflow
+- `.github/project.toml` - Project configuration
+
+#### Configuration
+
+1. **Create a Personal Access Token (PAT)**
+   - Go to GitHub Settings > Developer settings > Personal access tokens
+   - Create a token with `project` scope
+
+2. **Add repository secret**
+   - Go to your repository Settings > Secrets and variables > Actions
+   - Add a new secret named `PROJECT_TOKEN` with your PAT
+
+3. **Configure project settings** (`.github/project.toml`)
+   ```toml
+   [project]
+   url = "https://github.com/users/YOUR_USERNAME/projects/YOUR_PROJECT_NUMBER"
+
+   [defaults]
+   status = "Planned"
+   priority = "P1"
+   # iteration = "Sprint 1"
+   # size = 3
+   ```
+
+#### Available Default Fields
+
+| Field         | Type   | Example Values                                         |
+| ------------- | ------ | ------------------------------------------------------ |
+| `status`      | string | `Planned`, `Ready`, `In Progress`, `In Review`, `Done` |
+| `priority`    | string | `P0`, `P1`, `P2`                                       |
+| `iteration`   | string | Sprint/iteration name                                  |
+| `size`        | number | Story points or size estimate                          |
+| `estimate`    | number | Time estimate                                          |
+| `start_date`  | date   | `2026-01-05` (YYYY-MM-DD)                              |
+| `target_date` | date   | `2026-01-12` (YYYY-MM-DD)                              |
+
 ## API Reference
 
 ### `createCli(config: CliConfig): Cli`
