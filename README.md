@@ -249,6 +249,7 @@ deno task setup:actions
 ```
 
 This creates:
+
 - `.github/workflows/issue-to-project.yml` - GitHub Actions workflow
 - `.github/project.toml` - Project configuration
 
@@ -276,15 +277,15 @@ This creates:
 
 #### Available Default Fields
 
-| Field | Type | Example Values |
-|-------|------|----------------|
-| `status` | string | `Planned`, `Ready`, `In Progress`, `In Review`, `Done` |
-| `priority` | string | `P0`, `P1`, `P2` |
-| `iteration` | string | Sprint/iteration name |
-| `size` | number | Story points or size estimate |
-| `estimate` | number | Time estimate |
-| `start_date` | date | `2026-01-05` (YYYY-MM-DD) |
-| `target_date` | date | `2026-01-12` (YYYY-MM-DD) |
+| Field         | Type   | Example Values                                         |
+| ------------- | ------ | ------------------------------------------------------ |
+| `status`      | string | `Planned`, `Ready`, `In Progress`, `In Review`, `Done` |
+| `priority`    | string | `P0`, `P1`, `P2`                                       |
+| `iteration`   | string | Sprint/iteration name                                  |
+| `size`        | number | Story points or size estimate                          |
+| `estimate`    | number | Time estimate                                          |
+| `start_date`  | date   | `2026-01-05` (YYYY-MM-DD)                              |
+| `target_date` | date   | `2026-01-12` (YYYY-MM-DD)                              |
 
 ## API Reference
 

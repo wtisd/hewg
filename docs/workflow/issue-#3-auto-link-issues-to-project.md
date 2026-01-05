@@ -10,13 +10,13 @@ This document outlines the step-by-step implementation workflow for the Issue-to
 
 ## Phase Summary
 
-| Phase | Description | Estimated Tasks |
-|-------|-------------|-----------------|
-| 1 | Foundation Setup | 3 tasks |
-| 2 | Template Creation | 2 tasks |
-| 3 | CLI Command Implementation | 3 tasks |
-| 4 | Integration & Testing | 3 tasks |
-| 5 | Documentation | 2 tasks |
+| Phase | Description                | Estimated Tasks |
+| ----- | -------------------------- | --------------- |
+| 1     | Foundation Setup           | 3 tasks         |
+| 2     | Template Creation          | 2 tasks         |
+| 3     | CLI Command Implementation | 3 tasks         |
+| 4     | Integration & Testing      | 3 tasks         |
+| 5     | Documentation              | 2 tasks         |
 
 ## Dependency Graph
 
@@ -62,6 +62,7 @@ Phase 5: Documentation (parallel with Phase 4)
 ```
 
 **Verification**:
+
 ```bash
 deno check src/types/project-config.ts
 ```
@@ -71,11 +72,13 @@ deno check src/types/project-config.ts
 **File**: `src/types/project-config.ts`
 
 Create TypeScript interfaces for:
+
 - `ProjectConfig` - Main configuration interface
 - `ProjectDefaults` - Default field values
 - `StatusValue`, `PriorityValue` - Field value types
 
 **Verification**:
+
 ```bash
 deno check src/types/project-config.ts
 ```
@@ -83,6 +86,7 @@ deno check src/types/project-config.ts
 ### Task 1.3: Create Templates Directory
 
 **Structure**:
+
 ```
 src/
 └── templates/
@@ -91,6 +95,7 @@ src/
 ```
 
 **Command**:
+
 ```bash
 mkdir -p src/templates
 ```
@@ -104,6 +109,7 @@ mkdir -p src/templates
 **File**: `src/templates/issue-to-project.yml`
 
 GitHub Actions workflow that:
+
 1. Triggers on `issues: opened`
 2. Checks out repository
 3. Parses `.github/project.toml`
@@ -112,6 +118,7 @@ GitHub Actions workflow that:
 6. Comments on Issue if error occurs
 
 **Key Implementation Points**:
+
 - Use `actions/github-script@v7` for GraphQL
 - Parse TOML using inline JavaScript
 - Handle errors gracefully with Issue comments
@@ -121,6 +128,7 @@ GitHub Actions workflow that:
 **File**: `src/templates/project.toml`
 
 Default configuration template with:
+
 - Placeholder project URL
 - Common default values
 - Commented examples for all fields
@@ -141,9 +149,9 @@ export const setupActionsCommand: Command = {
   aliases: ['setup'],
   flags: [
     { long: 'force', short: 'f', description: 'Overwrite existing files' },
-    { long: 'project-url', short: 'p', takesValue: true, description: 'Project URL' }
+    { long: 'project-url', short: 'p', takesValue: true, description: 'Project URL' },
   ],
-  action: setupActionsAction
+  action: setupActionsAction,
 };
 
 // Implementation steps:
@@ -155,6 +163,7 @@ export const setupActionsCommand: Command = {
 ```
 
 **Verification**:
+
 ```bash
 deno check src/cli/commands/setup-actions.ts
 ```
@@ -164,6 +173,7 @@ deno check src/cli/commands/setup-actions.ts
 **File**: `src/cli/commands/mod.ts`
 
 Add export for new command:
+
 ```typescript
 export { setupActionsCommand } from './setup-actions.ts';
 ```
@@ -171,6 +181,7 @@ export { setupActionsCommand } from './setup-actions.ts';
 **File**: `src/main.ts` (or CLI initialization)
 
 Register the command:
+
 ```typescript
 cli.register(setupActionsCommand);
 ```
@@ -188,6 +199,7 @@ cli.register(setupActionsCommand);
 ```
 
 **Verification**:
+
 ```bash
 deno task setup:actions --help
 ```
@@ -201,6 +213,7 @@ deno task setup:actions --help
 **File**: `tests/project-config.test.ts`
 
 Test cases:
+
 - Valid TOML parsing
 - Missing required fields
 - Invalid field values
@@ -221,6 +234,7 @@ Deno.test('parseProjectConfig - missing url', () => {
 **File**: `tests/setup-actions.test.ts`
 
 Test cases:
+
 - Files created in correct locations
 - Existing files not overwritten (without --force)
 - --force flag behavior
@@ -229,6 +243,7 @@ Test cases:
 ### Task 4.3: Manual Workflow Test
 
 **Steps**:
+
 1. Run `deno task setup:actions`
 2. Configure `PROJECT_TOKEN` secret in repository
 3. Update `.github/project.toml` with actual project URL
@@ -245,6 +260,7 @@ Test cases:
 **File**: `README.md`
 
 Add section:
+
 ```markdown
 ## GitHub Actions Setup
 
@@ -264,6 +280,7 @@ deno task setup:actions
 ### Task 5.2: Add Inline Documentation
 
 Ensure all exported functions have JSDoc comments:
+
 - `setupActionsCommand` - Command definition
 - `setupActionsAction` - Main action handler
 - `parseProjectConfig` - Config parsing utility
@@ -273,25 +290,30 @@ Ensure all exported functions have JSDoc comments:
 ## Implementation Checklist
 
 ### Phase 1: Foundation Setup
+
 - [ ] Add `@std/toml` to deno.json imports
 - [ ] Create `src/types/project-config.ts`
 - [ ] Create `src/templates/` directory
 
 ### Phase 2: Template Creation
+
 - [ ] Create `src/templates/issue-to-project.yml`
 - [ ] Create `src/templates/project.toml`
 
 ### Phase 3: CLI Command
+
 - [ ] Implement `src/cli/commands/setup-actions.ts`
 - [ ] Update `src/cli/commands/mod.ts`
 - [ ] Add `setup:actions` task to deno.json
 
 ### Phase 4: Testing
+
 - [ ] Write unit tests for config parsing
 - [ ] Write integration tests for CLI
 - [ ] Manual end-to-end test
 
 ### Phase 5: Documentation
+
 - [ ] Update README.md
 - [ ] Add JSDoc comments
 
@@ -299,13 +321,13 @@ Ensure all exported functions have JSDoc comments:
 
 ## Commit Strategy
 
-| Commit | Content |
-|--------|---------|
-| 1 | `feat: add project config types and @std/toml dependency` |
-| 2 | `feat: add GitHub Actions workflow template` |
-| 3 | `feat: implement setup-actions CLI command` |
-| 4 | `test: add tests for project config and setup command` |
-| 5 | `docs: add setup instructions to README` |
+| Commit | Content                                                   |
+| ------ | --------------------------------------------------------- |
+| 1      | `feat: add project config types and @std/toml dependency` |
+| 2      | `feat: add GitHub Actions workflow template`              |
+| 3      | `feat: implement setup-actions CLI command`               |
+| 4      | `test: add tests for project config and setup command`    |
+| 5      | `docs: add setup instructions to README`                  |
 
 ---
 

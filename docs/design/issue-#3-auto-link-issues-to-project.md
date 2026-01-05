@@ -283,6 +283,7 @@ src/
 ### Token Permissions
 
 The `PROJECT_TOKEN` (Personal Access Token) requires:
+
 - `project` scope - Full control of projects (read/write)
 - `repo` scope - Repository access for Issue comments
 
@@ -294,14 +295,14 @@ The `PROJECT_TOKEN` (Personal Access Token) requires:
 
 ## Error Handling Strategy
 
-| Error Type | Action |
-|-----------|--------|
-| Missing config file | Fail workflow, log error |
-| Invalid TOML syntax | Fail workflow, comment on Issue |
-| Project not found | Fail workflow, comment on Issue |
-| Permission denied | Fail workflow, comment on Issue |
-| Field not found | Log warning, continue without setting |
-| Network error | Retry with backoff, then fail |
+| Error Type          | Action                                |
+| ------------------- | ------------------------------------- |
+| Missing config file | Fail workflow, log error              |
+| Invalid TOML syntax | Fail workflow, comment on Issue       |
+| Project not found   | Fail workflow, comment on Issue       |
+| Permission denied   | Fail workflow, comment on Issue       |
+| Field not found     | Log warning, continue without setting |
+| Network error       | Retry with backoff, then fail         |
 
 ### Error Comment Format
 
@@ -311,6 +312,7 @@ The `PROJECT_TOKEN` (Personal Access Token) requires:
 **Error**: [Error message]
 
 **Troubleshooting**:
+
 - Ensure `PROJECT_TOKEN` secret is configured
 - Verify the project URL in `.github/project.toml`
 - Check that the token has `project` scope
@@ -348,6 +350,7 @@ The `PROJECT_TOKEN` (Personal Access Token) requires:
 ## Rollback Plan
 
 If issues occur after deployment:
+
 1. Delete `.github/workflows/issue-to-project.yml`
 2. Workflow will no longer trigger
 3. Existing Issues remain unaffected
