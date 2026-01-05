@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "yarn --cwd frontend format"
+            "command": "deno fmt src/"
           }
         ]
       }
