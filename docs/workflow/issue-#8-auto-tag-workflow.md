@@ -1,18 +1,18 @@
 # Implementation Workflow: Auto Tag Workflow
 
-**Issue**: #8 - Add automatic tag creation workflow on PR merge with semantic versioning
-**Created**: 2026-01-05
-**Design Document**: [issue-#8-auto-tag-workflow.md](../design/issue-#8-auto-tag-workflow.md)
+**Issue**: #8 - Add automatic tag creation workflow on PR merge with semantic
+versioning **Created**: 2026-01-05 **Design Document**:
+[issue-#8-auto-tag-workflow.md](../design/issue-#8-auto-tag-workflow.md)
 
 ## Phase Overview
 
-| Phase | Description | Dependencies |
-|-------|-------------|--------------|
-| 1 | Core Workflow Creation | None |
-| 2 | Configuration Update | Phase 1 |
-| 3 | Template Creation | Phase 1 |
-| 4 | Cleanup | Phase 1-3 |
-| 5 | Testing & Verification | Phase 1-4 |
+| Phase | Description            | Dependencies |
+| ----- | ---------------------- | ------------ |
+| 1     | Core Workflow Creation | None         |
+| 2     | Configuration Update   | Phase 1      |
+| 3     | Template Creation      | Phase 1      |
+| 4     | Cleanup                | Phase 1-3    |
+| 5     | Testing & Verification | Phase 1-4    |
 
 ---
 
@@ -23,6 +23,7 @@
 **File**: `.github/workflows/auto-tag.yml`
 
 **Steps**:
+
 1. Create workflow file with PR merge trigger
 2. Implement TOML parser (reuse from pr-status-update.yml)
 3. Implement version parsing function
@@ -32,6 +33,7 @@
 7. Implement PR comment functionality
 
 **Acceptance Criteria**:
+
 - [ ] Workflow triggers on PR merge to main/develop
 - [ ] Correctly parses project.toml configuration
 - [ ] Extracts label from branch name
@@ -70,6 +72,7 @@ function calculateNewVersion(current, incrementType, targetBranch, isDevelopToMa
 **File**: `.github/project.toml`
 
 **Changes**:
+
 ```toml
 [tag]
 major_labels = ["release"]
@@ -78,6 +81,7 @@ patch_labels = ["bugfix", "fix", "patch", "hotfix"]
 ```
 
 **Acceptance Criteria**:
+
 - [ ] [tag] section added to project.toml
 - [ ] Default labels configured
 - [ ] Comments added for documentation
@@ -91,11 +95,13 @@ patch_labels = ["bugfix", "fix", "patch", "hotfix"]
 **File**: `src/templates/auto-tag.yml`
 
 **Steps**:
+
 1. Copy workflow from .github/workflows/auto-tag.yml
 2. Add template header comments
 3. Ensure consistent with other templates
 
 **Acceptance Criteria**:
+
 - [ ] Template file created
 - [ ] Header comments match other templates
 - [ ] Symlink or reference working
@@ -107,9 +113,11 @@ patch_labels = ["bugfix", "fix", "patch", "hotfix"]
 ### Task 4.1: Delete release.yml
 
 **Files to delete**:
+
 - `.github/workflows/release.yml`
 
 **Acceptance Criteria**:
+
 - [ ] release.yml deleted
 - [ ] No broken references
 
@@ -126,20 +134,21 @@ deno lint
 
 ### Task 5.2: Scenario Testing
 
-| Test Case | Branch | Target | Expected Tag |
-|-----------|--------|--------|--------------|
-| No existing tags + feature | feature/test/1/x | develop | v0.1.0-rc.0 |
-| Existing v1.0.0 + feature | feature/test/2/x | develop | v1.1.0-rc.0 |
-| Existing v1.1.0-rc.0 + bugfix | bugfix/test/3/x | develop | v1.1.1-rc.0 |
-| Existing v1.1.0-rc.0 + docs | docs/test/4/x | develop | v1.1.0-rc.1 |
-| Develop to main merge | develop | main | v1.1.0 (strip rc) |
-| Direct hotfix to main | hotfix/test/5/x | main | v1.0.1 |
+| Test Case                     | Branch           | Target  | Expected Tag      |
+| ----------------------------- | ---------------- | ------- | ----------------- |
+| No existing tags + feature    | feature/test/1/x | develop | v0.1.0-rc.0       |
+| Existing v1.0.0 + feature     | feature/test/2/x | develop | v1.1.0-rc.0       |
+| Existing v1.1.0-rc.0 + bugfix | bugfix/test/3/x  | develop | v1.1.1-rc.0       |
+| Existing v1.1.0-rc.0 + docs   | docs/test/4/x    | develop | v1.1.0-rc.1       |
+| Develop to main merge         | develop          | main    | v1.1.0 (strip rc) |
+| Direct hotfix to main         | hotfix/test/5/x  | main    | v1.0.1            |
 
 ---
 
 ## Commit Strategy
 
 ### Commit 1: Design and Workflow Documents
+
 ```
 📝 docs: add design and workflow documents for auto-tag feature
 
@@ -148,6 +157,7 @@ deno lint
 ```
 
 ### Commit 2: Core Workflow
+
 ```
 ✨ feat: add auto-tag workflow for semantic versioning
 
@@ -157,6 +167,7 @@ deno lint
 ```
 
 ### Commit 3: Configuration
+
 ```
 🔧 config: add [tag] section to project.toml
 
@@ -165,6 +176,7 @@ deno lint
 ```
 
 ### Commit 4: Template
+
 ```
 ✨ feat: add auto-tag.yml template
 
@@ -172,6 +184,7 @@ deno lint
 ```
 
 ### Commit 5: Cleanup
+
 ```
 🔥 chore: remove release.yml (replaced by auto-tag)
 
@@ -194,10 +207,12 @@ If issues are discovered after merge:
 ## Dependencies
 
 ### External Dependencies
+
 - `actions/checkout@v4`
 - `actions/github-script@v7`
 
 ### Internal Dependencies
+
 - `.github/project.toml` must exist
 - Branch naming convention must be followed
 
@@ -205,9 +220,9 @@ If issues are discovered after merge:
 
 ## Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Wrong version calculation | Low | Medium | Comprehensive testing |
-| Tag push failure | Low | Low | Error handling + PR comment |
-| Config file missing | Low | Low | Default values fallback |
-| Race condition (concurrent merges) | Low | Medium | Git handles tag conflicts |
+| Risk                               | Likelihood | Impact | Mitigation                  |
+| ---------------------------------- | ---------- | ------ | --------------------------- |
+| Wrong version calculation          | Low        | Medium | Comprehensive testing       |
+| Tag push failure                   | Low        | Low    | Error handling + PR comment |
+| Config file missing                | Low        | Low    | Default values fallback     |
+| Race condition (concurrent merges) | Low        | Medium | Git handles tag conflicts   |
