@@ -25,3 +25,4 @@
 export { Cli, createCli } from './cli/mod.ts';
 export type { CliConfig, Command, CommandContext, CommandOptions } from './cli/types.ts';
 export { VERSION } from './version.ts';
+export * as colors from './cli/colors.ts';
