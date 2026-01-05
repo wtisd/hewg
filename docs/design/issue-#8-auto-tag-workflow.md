@@ -93,11 +93,11 @@ Examples:
 
 ### 3.3 Branch Target Logic
 
-| Target Branch | Source             | Action                            |
-| ------------- | ------------------ | --------------------------------- |
-| `develop`     | Any PR             | Create RC version                 |
-| `main`        | Feature/bugfix PR  | Create release version            |
-| `main`        | `develop` branch   | Strip RC suffix, create release   |
+| Target Branch | Source            | Action                          |
+| ------------- | ----------------- | ------------------------------- |
+| `develop`     | Any PR            | Create RC version               |
+| `main`        | Feature/bugfix PR | Create release version          |
+| `main`        | `develop` branch  | Strip RC suffix, create release |
 
 ### 3.4 Version Calculation Algorithm
 
@@ -171,24 +171,24 @@ patch_labels = ["bugfix", "fix", "patch", "hotfix"]
 
 ### 4.2 Configuration Defaults
 
-| Setting          | Default Value                        |
-| ---------------- | ------------------------------------ |
-| `major_labels`   | `["release"]`                        |
-| `minor_labels`   | `["feature"]`                        |
-| `patch_labels`   | `["bugfix", "fix", "patch", "hotfix"]` |
-| Initial version  | `v0.0.0`                             |
+| Setting         | Default Value                          |
+| --------------- | -------------------------------------- |
+| `major_labels`  | `["release"]`                          |
+| `minor_labels`  | `["feature"]`                          |
+| `patch_labels`  | `["bugfix", "fix", "patch", "hotfix"]` |
+| Initial version | `v0.0.0`                               |
 
 ## 5. Error Handling
 
 ### 5.1 Error Scenarios
 
-| Scenario            | Handling                        |
-| ------------------- | ------------------------------- |
-| No existing tags    | Use `v0.0.0` as base            |
-| Invalid tag format  | Log warning, use `v0.0.0`       |
-| Missing config file | Use default label mappings      |
-| Unknown label       | Treat as RC-only increment      |
-| Git push failure    | Fail workflow, comment on PR    |
+| Scenario            | Handling                     |
+| ------------------- | ---------------------------- |
+| No existing tags    | Use `v0.0.0` as base         |
+| Invalid tag format  | Log warning, use `v0.0.0`    |
+| Missing config file | Use default label mappings   |
+| Unknown label       | Treat as RC-only increment   |
+| Git push failure    | Fail workflow, comment on PR |
 
 ### 5.2 PR Comments
 
@@ -218,7 +218,7 @@ Error: {error_message}
 
 ```yaml
 permissions:
-  contents: write  # Required to create and push tags
+  contents: write # Required to create and push tags
 ```
 
 ### 6.2 Token Requirements
@@ -264,15 +264,15 @@ Example: `feature/wtisd/8/auto-tag-workflow`
 
 ### 9.1 Test Scenarios
 
-| Scenario                 | Input                   | Expected Output  |
-| ------------------------ | ----------------------- | ---------------- |
-| First tag (no existing)  | feature PR → develop    | `v0.1.0-rc.0`    |
-| Feature to develop       | v1.0.0, feature PR      | `v1.1.0-rc.0`    |
-| Bugfix to develop        | v1.1.0-rc.0, bugfix PR  | `v1.1.1-rc.0`    |
-| RC increment             | v1.1.0-rc.0, docs PR    | `v1.1.0-rc.1`    |
-| Develop to main          | v1.1.0-rc.3             | `v1.1.0`         |
-| Hotfix to main           | v1.1.0, hotfix PR       | `v1.1.1`         |
-| Release to main          | v1.1.0, release PR      | `v2.0.0`         |
+| Scenario                | Input                  | Expected Output |
+| ----------------------- | ---------------------- | --------------- |
+| First tag (no existing) | feature PR → develop   | `v0.1.0-rc.0`   |
+| Feature to develop      | v1.0.0, feature PR     | `v1.1.0-rc.0`   |
+| Bugfix to develop       | v1.1.0-rc.0, bugfix PR | `v1.1.1-rc.0`   |
+| RC increment            | v1.1.0-rc.0, docs PR   | `v1.1.0-rc.1`   |
+| Develop to main         | v1.1.0-rc.3            | `v1.1.0`        |
+| Hotfix to main          | v1.1.0, hotfix PR      | `v1.1.1`        |
+| Release to main         | v1.1.0, release PR     | `v2.0.0`        |
 
 ### 9.2 Manual Testing
 
