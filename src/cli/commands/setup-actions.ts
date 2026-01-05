@@ -80,7 +80,7 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
     if (workflowExists) existingFiles.push(workflowPath);
     if (configExists) existingFiles.push(configPath);
 
-    console.log(colors.warning('⚠️  The following files already exist:'));
+    console.log(colors.warn('⚠️  The following files already exist:'));
     for (const file of existingFiles) {
       console.log(colors.muted(`   - ${file}`));
     }
