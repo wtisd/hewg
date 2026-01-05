@@ -73,6 +73,7 @@ Two methods for extracting Issue numbers from a Pull Request:
 Branch format: `label/author/{issue_number}/title`
 
 Examples:
+
 - `feature/wtisd/123/add-login` → Issue #123
 - `bugfix/john/456/fix-memory-leak` → Issue #456
 
@@ -81,6 +82,7 @@ Regex pattern: `^[^/]+/[^/]+/(\d+)/.*$`
 #### PR Body Keywords
 
 Supported keywords (case-insensitive):
+
 - `Closes #N`
 - `Fixes #N`
 - `Resolves #N`
@@ -233,14 +235,14 @@ src/
 
 ## Error Handling Strategy
 
-| Error Type              | Action                                         |
-| ----------------------- | ---------------------------------------------- |
-| No Issue number found   | Comment on PR with warning                     |
-| Issue not found         | Skip Issue, log warning                        |
-| Project not found       | Comment on PR with error                       |
-| Status option not found | Comment on PR with error                       |
-| Permission denied       | Comment on PR with error                       |
-| Network error           | Retry with backoff, then fail                  |
+| Error Type              | Action                        |
+| ----------------------- | ----------------------------- |
+| No Issue number found   | Comment on PR with warning    |
+| Issue not found         | Skip Issue, log warning       |
+| Project not found       | Comment on PR with error      |
+| Status option not found | Comment on PR with error      |
+| Permission denied       | Comment on PR with error      |
+| Network error           | Retry with backoff, then fail |
 
 ### Error Comment Format
 
@@ -253,6 +255,7 @@ src/
 **Issues failed**: #789
 
 **Troubleshooting**:
+
 - Ensure `PROJECT_TOKEN` secret is configured with `project` scope
 - Verify the project URL in `.github/project.toml`
 - Check that the status option exists in your project
@@ -266,10 +269,12 @@ src/
 :information_source: **No linked Issues found**
 
 Could not find Issue numbers in:
+
 - Branch name: `feature/wtisd/no-issue/some-title`
 - PR body keywords: (none found)
 
 **Expected formats**:
+
 - Branch: `label/author/{issue_number}/title`
 - Keywords: `Closes #N`, `Fixes #N`, `Resolves #N`
 ```
@@ -279,6 +284,7 @@ Could not find Issue numbers in:
 ### Token Permissions
 
 Uses the same `PROJECT_TOKEN` as issue-to-project workflow:
+
 - `project` scope - Full control of projects (read/write)
 - `repo` scope - Repository access for PR comments
 

@@ -10,12 +10,12 @@ This document outlines the step-by-step implementation workflow for the PR Statu
 
 ## Phase Summary
 
-| Phase | Description                | Tasks |
-| ----- | -------------------------- | ----- |
-| 1     | Template Creation          | 2     |
-| 2     | Workflow Implementation    | 4     |
-| 3     | CLI Updates                | 2     |
-| 4     | Testing & Documentation    | 2     |
+| Phase | Description             | Tasks |
+| ----- | ----------------------- | ----- |
+| 1     | Template Creation       | 2     |
+| 2     | Workflow Implementation | 4     |
+| 3     | CLI Updates             | 2     |
+| 4     | Testing & Documentation | 2     |
 
 ## Dependency Graph
 
@@ -66,6 +66,7 @@ ignore_draft = false
 ```
 
 **Verification**:
+
 ```bash
 deno fmt src/templates/project.toml
 ```
@@ -75,6 +76,7 @@ deno fmt src/templates/project.toml
 **File**: `src/templates/pr-status-update.yml`
 
 Create workflow template with:
+
 - Trigger on `pull_request: [opened, reopened]`
 - TOML parser (reuse from issue-to-project.yml)
 - Issue number extraction logic
@@ -82,6 +84,7 @@ Create workflow template with:
 - Error handling with PR comments
 
 **Verification**:
+
 ```bash
 # Validate YAML syntax
 deno eval "import { parse } from 'jsr:@std/yaml'; console.log(parse(Deno.readTextFileSync('src/templates/pr-status-update.yml')))"
@@ -142,7 +145,7 @@ async function findProjectItem(projectId, issueNodeId) {
   `;
   const result = await github.graphql(query, { projectId });
   const items = result.node?.items?.nodes || [];
-  return items.find(item => item.content?.id === issueNodeId);
+  return items.find((item) => item.content?.id === issueNodeId);
 }
 ```
 
@@ -225,20 +228,24 @@ Add section documenting PR status update feature.
 ## Implementation Checklist
 
 ### Phase 1: Template Creation
+
 - [ ] Update `src/templates/project.toml` with `[pr]` section
 - [ ] Create `src/templates/pr-status-update.yml`
 
 ### Phase 2: Workflow Implementation
+
 - [ ] Implement Issue number extraction (branch + keywords)
 - [ ] Implement Project item lookup
 - [ ] Implement auto-add to Project
 - [ ] Implement status update with error handling
 
 ### Phase 3: CLI Updates
+
 - [ ] Update `src/cli/commands/setup-actions.ts`
 - [ ] Update command help/documentation
 
 ### Phase 4: Testing
+
 - [ ] Manual end-to-end test
 - [ ] Update README.md
 
@@ -246,13 +253,13 @@ Add section documenting PR status update feature.
 
 ## Commit Strategy
 
-| Commit | Content                                           |
-| ------ | ------------------------------------------------- |
+| Commit | Content                                              |
+| ------ | ---------------------------------------------------- |
 | 1      | `docs: add design and workflow for PR status update` |
-| 2      | `feat: add pr-status-update.yml workflow template` |
-| 3      | `feat: update project.toml with [pr] section` |
-| 4      | `feat: update setup-actions to deploy PR workflow` |
-| 5      | `docs: update README with PR status update feature` |
+| 2      | `feat: add pr-status-update.yml workflow template`   |
+| 3      | `feat: update project.toml with [pr] section`        |
+| 4      | `feat: update setup-actions to deploy PR workflow`   |
+| 5      | `docs: update README with PR status update feature`  |
 
 ---
 

@@ -1,8 +1,9 @@
 /**
- * Setup GitHub Actions command for Issue-to-Project linking
+ * Setup GitHub Actions command for Issue-to-Project automation
  *
- * This command creates the necessary files to automatically add new Issues
- * to a GitHub Project when they are created.
+ * This command creates the necessary files to:
+ * 1. Automatically add new Issues to a GitHub Project when they are created
+ * 2. Update Issue status to "In Review" when a Pull Request is opened
  *
  * @module
  */
@@ -65,19 +66,22 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
   const force = ctx.flags.force as boolean | undefined;
   const projectUrl = ctx.flags['project-url'] as string | undefined;
 
-  console.log(colors.highlight('\n🚀 Setting up GitHub Actions for Issue-to-Project linking\n'));
+  console.log(colors.highlight('\n🚀 Setting up GitHub Actions for Issue-to-Project automation\n'));
 
   const workflowDir = '.github/workflows';
-  const workflowPath = join(workflowDir, 'issue-to-project.yml');
+  const issueWorkflowPath = join(workflowDir, 'issue-to-project.yml');
+  const prWorkflowPath = join(workflowDir, 'pr-status-update.yml');
   const configPath = '.github/project.toml';
 
   // Check for existing files
-  const workflowExists = await fileExists(workflowPath);
+  const issueWorkflowExists = await fileExists(issueWorkflowPath);
+  const prWorkflowExists = await fileExists(prWorkflowPath);
   const configExists = await fileExists(configPath);
 
-  if (!force && (workflowExists || configExists)) {
+  if (!force && (issueWorkflowExists || prWorkflowExists || configExists)) {
     const existingFiles: string[] = [];
-    if (workflowExists) existingFiles.push(workflowPath);
+    if (issueWorkflowExists) existingFiles.push(issueWorkflowPath);
+    if (prWorkflowExists) existingFiles.push(prWorkflowPath);
     if (configExists) existingFiles.push(configPath);
 
     console.log(colors.warn('⚠️  The following files already exist:'));
@@ -92,9 +96,12 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
   await ensureDir(workflowDir);
   console.log(colors.success(`✓ Created directory: ${workflowDir}`));
 
-  // Copy workflow template
-  await copyTemplate('issue-to-project.yml', workflowPath);
-  console.log(colors.success(`✓ Created workflow: ${workflowPath}`));
+  // Copy workflow templates
+  await copyTemplate('issue-to-project.yml', issueWorkflowPath);
+  console.log(colors.success(`✓ Created workflow: ${issueWorkflowPath}`));
+
+  await copyTemplate('pr-status-update.yml', prWorkflowPath);
+  console.log(colors.success(`✓ Created workflow: ${prWorkflowPath}`));
 
   // Copy and optionally customize config template
   const replacements: Record<string, string> = {};
@@ -120,22 +127,29 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
   if (!projectUrl) {
     console.log(colors.header('2. Edit .github/project.toml:'));
     console.log(colors.muted('   - Update the project URL to your GitHub Project'));
-    console.log(colors.muted('   - Customize default field values as needed'));
+    console.log(colors.muted('   - Customize default field values and PR settings as needed'));
     console.log();
   }
 
-  console.log(colors.header(`${projectUrl ? '2' : '3'}. Create a test Issue:`));
-  console.log(colors.muted('   - Create a new Issue in your repository'));
-  console.log(colors.muted('   - Check if it appears in your GitHub Project'));
+  console.log(colors.header(`${projectUrl ? '2' : '3'}. Test the workflows:`));
+  console.log(colors.muted('   - Create a new Issue → should appear in your GitHub Project'));
+  console.log(
+    colors.muted('   - Create a PR linking the Issue → status should change to "In Review"'),
+  );
   console.log();
 
   console.log(colors.success('✅ Setup complete!\n'));
+  console.log(colors.muted('Workflows created:'));
+  console.log(colors.muted('  • issue-to-project.yml - Adds new Issues to Project'));
+  console.log(colors.muted('  • pr-status-update.yml - Updates Issue status on PR\n'));
 }
 
 /**
  * Setup-actions command definition
  *
- * Creates GitHub Actions workflow files for automatic Issue-to-Project linking.
+ * Creates GitHub Actions workflow files for automatic Issue-to-Project automation:
+ * - issue-to-project.yml: Adds new Issues to Project with default field values
+ * - pr-status-update.yml: Updates Issue status to "In Review" when PR is opened
  *
  * @example
  * ```bash
@@ -151,7 +165,7 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
  */
 export const setupActionsCommand: Command = {
   name: 'setup-actions',
-  description: 'Setup GitHub Actions for automatic Issue-to-Project linking',
+  description: 'Setup GitHub Actions for Issue-to-Project automation',
   aliases: ['setup'],
   flags: [
     {
