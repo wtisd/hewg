@@ -26,11 +26,11 @@ Phase 1          Phase 2              Phase 3           Phase 4
 
 ### Tasks
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 1.1 | Update package name to `@erdtree/hewg` | `deno.json` | ⬜ |
-| 1.2 | Update README import examples | `README.md` | ⬜ |
-| 1.3 | Update module docstring | `src/mod.ts` | ⬜ |
+| #   | Task                                   | File         | Status |
+| --- | -------------------------------------- | ------------ | ------ |
+| 1.1 | Update package name to `@erdtree/hewg` | `deno.json`  | ⬜     |
+| 1.2 | Update README import examples          | `README.md`  | ⬜     |
+| 1.3 | Update module docstring                | `src/mod.ts` | ⬜     |
 
 ### Details
 
@@ -50,6 +50,7 @@ Phase 1          Phase 2              Phase 3           Phase 4
 **File**: `README.md`
 
 Update all occurrences of:
+
 - `jsr:@anthropic/hewg` → `jsr:@erdtree/hewg`
 - `@anthropic/hewg` → `@erdtree/hewg`
 
@@ -79,13 +80,13 @@ git commit -m "🔧 chore: rename package to @erdtree/hewg"
 
 ### Tasks
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 2.1 | Create color utilities module | `src/cli/colors.ts` | ⬜ |
-| 2.2 | Export colors from CLI module | `src/cli/mod.ts` | ⬜ |
-| 2.3 | Export colors from main module | `src/mod.ts` | ⬜ |
-| 2.4 | Update CLI help output with colors | `src/cli/cli.ts` | ⬜ |
-| 2.5 | Update CLI error output with colors | `src/cli/cli.ts` | ⬜ |
+| #   | Task                                | File                | Status |
+| --- | ----------------------------------- | ------------------- | ------ |
+| 2.1 | Create color utilities module       | `src/cli/colors.ts` | ⬜     |
+| 2.2 | Export colors from CLI module       | `src/cli/mod.ts`    | ⬜     |
+| 2.3 | Export colors from main module      | `src/mod.ts`        | ⬜     |
+| 2.4 | Update CLI help output with colors  | `src/cli/cli.ts`    | ⬜     |
+| 2.5 | Update CLI error output with colors | `src/cli/cli.ts`    | ⬜     |
 
 ### Details
 
@@ -181,6 +182,7 @@ export function header(text: string): string {
 **File**: `src/cli/cli.ts`
 
 Areas to modify:
+
 1. `showHelp()` method - Global help
 2. `showCommandHelp()` method - Command-specific help
 
@@ -233,11 +235,11 @@ git commit -m "✨ feat: add color output support to CLI"
 
 ### Tasks
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 3.1 | Add color utilities tests | `tests/colors_test.ts` | ⬜ |
-| 3.2 | Run existing tests | - | ⬜ |
-| 3.3 | Run coverage analysis | - | ⬜ |
+| #   | Task                      | File                   | Status |
+| --- | ------------------------- | ---------------------- | ------ |
+| 3.1 | Add color utilities tests | `tests/colors_test.ts` | ⬜     |
+| 3.2 | Run existing tests        | -                      | ⬜     |
+| 3.3 | Run coverage analysis     | -                      | ⬜     |
 
 ### Details
 
@@ -260,7 +262,7 @@ Deno.test('colors.error returns bold red text', () => {
   const result = colors.error('Error');
   assertStringIncludes(result, 'Error');
   assertStringIncludes(result, '\x1b[31m'); // red
-  assertStringIncludes(result, '\x1b[1m');  // bold
+  assertStringIncludes(result, '\x1b[1m'); // bold
 });
 
 // ... additional tests for each function
@@ -296,11 +298,11 @@ git commit -m "✅ test: add color utilities tests"
 
 ### Tasks
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 4.1 | Update README with color examples | `README.md` | ⬜ |
-| 4.2 | Run full CI checks | - | ⬜ |
-| 4.3 | Final review | - | ⬜ |
+| #   | Task                              | File        | Status |
+| --- | --------------------------------- | ----------- | ------ |
+| 4.1 | Update README with color examples | `README.md` | ⬜     |
+| 4.2 | Run full CI checks                | -           | ⬜     |
+| 4.3 | Final review                      | -           | ⬜     |
 
 ### Details
 
@@ -330,6 +332,7 @@ deno task ci
 ```
 
 This runs:
+
 - `deno fmt --check`
 - `deno lint`
 - `deno check`
@@ -390,12 +393,12 @@ git branch -D feature/wtisd/#1/deno-cli-template-color-output
 
 ## Progress Tracking
 
-| Phase | Status | Commits |
-|-------|--------|---------|
-| Phase 1: Configuration | ⬜ Not Started | 0/1 |
-| Phase 2: Color Utils | ⬜ Not Started | 0/1 |
-| Phase 3: Testing | ⬜ Not Started | 0/1 |
-| Phase 4: Documentation | ⬜ Not Started | 0/1 |
+| Phase                  | Status         | Commits |
+| ---------------------- | -------------- | ------- |
+| Phase 1: Configuration | ⬜ Not Started | 0/1     |
+| Phase 2: Color Utils   | ⬜ Not Started | 0/1     |
+| Phase 3: Testing       | ⬜ Not Started | 0/1     |
+| Phase 4: Documentation | ⬜ Not Started | 0/1     |
 
 **Legend**: ⬜ Not Started | 🔄 In Progress | ✅ Completed
 
@@ -403,12 +406,12 @@ git branch -D feature/wtisd/#1/deno-cli-template-color-output
 
 ## Estimated Effort
 
-| Phase | Estimated Time |
-|-------|----------------|
-| Phase 1 | 10 minutes |
-| Phase 2 | 30 minutes |
-| Phase 3 | 20 minutes |
-| Phase 4 | 15 minutes |
+| Phase     | Estimated Time  |
+| --------- | --------------- |
+| Phase 1   | 10 minutes      |
+| Phase 2   | 30 minutes      |
+| Phase 3   | 20 minutes      |
+| Phase 4   | 15 minutes      |
 | **Total** | **~75 minutes** |
 
 ---

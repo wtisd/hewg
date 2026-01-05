@@ -7,7 +7,8 @@ A versatile CLI framework for Deno.
 - Subcommand support with aliases
 - Positional arguments with defaults
 - Boolean and value flags
-- Auto-generated help messages
+- Auto-generated help messages with color output
+- Semantic color utilities for terminal styling
 - TypeScript-first with full type safety
 - Zero external dependencies (uses Deno standard library only)
 - Cross-platform binary compilation
@@ -123,6 +124,45 @@ hewg hello [name] [--loud] [--count <n>]
 hewg version [--json]
 ```
 
+## Color Output
+
+hewg includes built-in color utilities for consistent terminal styling:
+
+```ts
+import { colors } from '@erdtree/hewg';
+
+// Semantic message formatting
+console.log(colors.success('Operation completed!')); // Green
+console.log(colors.error('Something went wrong')); // Bold red
+console.log(colors.warn('Deprecated feature')); // Yellow
+console.log(colors.info('Information message')); // Cyan
+
+// Text styling
+console.log(colors.highlight('Important')); // Bold cyan
+console.log(colors.muted('Secondary info')); // Dim
+
+// CLI-specific formatting
+console.log(colors.command('help')); // Cyan (for command names)
+console.log(colors.flag('--verbose')); // Yellow (for flags)
+console.log(colors.argument('<file>')); // Dim (for placeholders)
+console.log(colors.header('USAGE:')); // Bold (for section headers)
+```
+
+### Color Scheme
+
+| Function    | Color     | Use Case                        |
+| ----------- | --------- | ------------------------------- |
+| `success`   | Green     | Success messages, confirmations |
+| `error`     | Bold Red  | Error messages, failures        |
+| `warn`      | Yellow    | Warnings, cautions              |
+| `info`      | Cyan      | Informational messages          |
+| `highlight` | Bold Cyan | Emphasized text                 |
+| `muted`     | Dim       | Secondary information           |
+| `command`   | Cyan      | Command names in help           |
+| `flag`      | Yellow    | Flag names (--flag)             |
+| `argument`  | Dim       | Argument placeholders           |
+| `header`    | Bold      | Section headers                 |
+
 ## Development
 
 ### Prerequisites
@@ -169,6 +209,7 @@ hewg/
 │   └── cli/
 │       ├── mod.ts         # CLI module exports
 │       ├── cli.ts         # Core CLI class
+│       ├── colors.ts      # Color utilities
 │       ├── types.ts       # Type definitions
 │       └── commands/
 │           ├── mod.ts     # Command exports
@@ -176,6 +217,7 @@ hewg/
 │           └── version.ts # Version command
 ├── tests/
 │   ├── cli_test.ts        # CLI tests
+│   ├── colors_test.ts     # Color utilities tests
 │   ├── commands_test.ts   # Command tests
 │   └── mod_test.ts        # Module export tests
 └── .github/

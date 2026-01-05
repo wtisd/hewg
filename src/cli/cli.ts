@@ -195,7 +195,9 @@ export class Cli {
       for (const err of parsed.errors) {
         console.error(colors.error(`Error: ${err}`));
       }
-      console.error(colors.muted(`\nRun '${this.config.name} ${parsed.command.name} --help' for usage.`));
+      console.error(
+        colors.muted(`\nRun '${this.config.name} ${parsed.command.name} --help' for usage.`),
+      );
       Deno.exit(1);
     }
 
@@ -242,7 +244,11 @@ export class Cli {
     console.log(`  ${colors.flag('-h, --help')}      Show this help message`);
     console.log(`  ${colors.flag('-v, --version')}   Show version information`);
 
-    console.log(colors.muted(`\nRun '${this.config.name} <command> --help' for more information on a command.`));
+    console.log(
+      colors.muted(
+        `\nRun '${this.config.name} <command> --help' for more information on a command.`,
+      ),
+    );
   }
 
   /**
@@ -277,7 +283,9 @@ export class Cli {
         const padding = ' '.repeat(maxArgLen - arg.name.length + 2);
         const required = arg.required ? colors.muted(' (required)') : '';
         const defaultVal = arg.default ? colors.muted(` [default: ${arg.default}]`) : '';
-        console.log(`  ${colors.info(arg.name)}${padding}${arg.description ?? ''}${required}${defaultVal}`);
+        console.log(
+          `  ${colors.info(arg.name)}${padding}${arg.description ?? ''}${required}${defaultVal}`,
+        );
       }
     }
 
@@ -300,7 +308,9 @@ export class Cli {
         const flg = command.flags[i];
         const flagStr = flagStrings[i];
         const padding = ' '.repeat(maxFlagLen - flagLengths[i] + 2);
-        const defaultVal = flg.default !== undefined ? colors.muted(` [default: ${flg.default}]`) : '';
+        const defaultVal = flg.default !== undefined
+          ? colors.muted(` [default: ${flg.default}]`)
+          : '';
         console.log(`  ${flagStr}${padding}${flg.description ?? ''}${defaultVal}`);
       }
     }

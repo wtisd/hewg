@@ -21,13 +21,13 @@ This document describes the design for a Deno CLI tool template (`@erdtree/hewg`
 
 ### 1.2 Scope
 
-| In Scope | Out of Scope |
-|----------|--------------|
-| CLI framework core | Plugin/extension system |
-| Color output utilities | Interactive prompts |
-| Sample commands | Configuration file parsing |
-| Test infrastructure | Network operations |
-| CI/CD workflows | Database integration |
+| In Scope               | Out of Scope               |
+| ---------------------- | -------------------------- |
+| CLI framework core     | Plugin/extension system    |
+| Color output utilities | Interactive prompts        |
+| Sample commands        | Configuration file parsing |
+| Test infrastructure    | Network operations         |
+| CI/CD workflows        | Database integration       |
 
 ---
 
@@ -145,23 +145,24 @@ export function argument(text: string): string;
 
 #### 3.1.3 Color Scheme
 
-| Semantic Function | Color Combination | Use Case |
-|-------------------|-------------------|----------|
-| `success` | green | Success messages, confirmations |
-| `error` | red + bold | Error messages, failures |
-| `warn` | yellow | Warnings, cautions |
-| `info` | cyan | Informational messages |
-| `highlight` | cyan + bold | Emphasized text |
-| `muted` | dim | Secondary information |
-| `command` | cyan | Command names in help |
-| `flag` | yellow | Flag names (--flag) |
-| `argument` | dim | Argument placeholders (<arg>) |
+| Semantic Function | Color Combination | Use Case                        |
+| ----------------- | ----------------- | ------------------------------- |
+| `success`         | green             | Success messages, confirmations |
+| `error`           | red + bold        | Error messages, failures        |
+| `warn`            | yellow            | Warnings, cautions              |
+| `info`            | cyan              | Informational messages          |
+| `highlight`       | cyan + bold       | Emphasized text                 |
+| `muted`           | dim               | Secondary information           |
+| `command`         | cyan              | Command names in help           |
+| `flag`            | yellow            | Flag names (--flag)             |
+| `argument`        | dim               | Argument placeholders (<arg>)   |
 
 ### 3.2 CLI Class Modifications
 
 #### 3.2.1 Help Output Enhancement
 
 **Before:**
+
 ```
 hewg 0.1.0
 
@@ -176,6 +177,7 @@ COMMANDS:
 ```
 
 **After (with colors):**
+
 ```
 hewg 0.1.0
 
@@ -228,7 +230,7 @@ export * as colors from './cli/colors.ts';
 ```typescript
 // Existing exports
 export { Cli, createCli } from './cli.ts';
-export type { /* ... */ } from './types.ts';
+export type {} from /* ... */ './types.ts';
 
 // New export
 export * as colors from './colors.ts';
@@ -243,7 +245,7 @@ export * as colors from './colors.ts';
 ```json
 {
   "name": "@erdtree/hewg",
-  "version": "0.1.0",
+  "version": "0.1.0"
   // ... rest unchanged
 }
 ```
@@ -258,12 +260,12 @@ Using only `@std/fmt/colors` which is already available via `@std/fmt`.
 
 ### 6.1 Color-Enhanced Error Messages
 
-| Error Type | Format | Example |
-|------------|--------|---------|
-| Unknown command | `error()` | `Error: Unknown command: foo` |
+| Error Type       | Format    | Example                                  |
+| ---------------- | --------- | ---------------------------------------- |
+| Unknown command  | `error()` | `Error: Unknown command: foo`            |
 | Missing argument | `error()` | `Error: Missing required argument: name` |
-| Missing flag | `error()` | `Error: Missing required flag: --output` |
-| Execution error | `error()` | `Error executing command: ...` |
+| Missing flag     | `error()` | `Error: Missing required flag: --output` |
+| Execution error  | `error()` | `Error executing command: ...`           |
 
 ### 6.2 Help Suggestions
 
@@ -294,8 +296,8 @@ Test help output contains expected color codes (or test in no-color mode).
 
 ### 8.1 Breaking Changes
 
-| Change | Impact | Migration |
-|--------|--------|-----------|
+| Change       | Impact       | Migration                                  |
+| ------------ | ------------ | ------------------------------------------ |
 | Package name | Import paths | Update `@anthropic/hewg` → `@erdtree/hewg` |
 
 ### 8.2 Non-Breaking Additions
@@ -349,12 +351,12 @@ const cli = createCli({
 
 ## Appendix A: Color ANSI Codes Reference
 
-| Color | ANSI Code | Function |
-|-------|-----------|----------|
-| Red | `\x1b[31m` | `red()` |
-| Green | `\x1b[32m` | `green()` |
+| Color  | ANSI Code  | Function   |
+| ------ | ---------- | ---------- |
+| Red    | `\x1b[31m` | `red()`    |
+| Green  | `\x1b[32m` | `green()`  |
 | Yellow | `\x1b[33m` | `yellow()` |
-| Cyan | `\x1b[36m` | `cyan()` |
-| Bold | `\x1b[1m` | `bold()` |
-| Dim | `\x1b[2m` | `dim()` |
-| Reset | `\x1b[0m` | (auto) |
+| Cyan   | `\x1b[36m` | `cyan()`   |
+| Bold   | `\x1b[1m`  | `bold()`   |
+| Dim    | `\x1b[2m`  | `dim()`    |
+| Reset  | `\x1b[0m`  | (auto)     |
