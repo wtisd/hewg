@@ -1,0 +1,28 @@
+services:
+  hewg:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: hewg
+    volumes:
+      # Mount the project directory into the container
+      - .:/workspace:cached
+      # Persist bash history
+      - ~/.bash_history:/home/node/.bash_history:cached
+      # Mount host's .gitconfig.local for user name/email
+      - ~/.gitconfig:/home/node/.gitconfig:cached
+      - ~/.gitconfig.local:/home/node/.gitconfig.local:cached
+      - ~/.ssh:/home/node/.ssh:cached
+      # Mount Docker socket for Docker-in-Docker support
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Mount host's workspace
+      # - ~/work/input:/home/node/input:ro
+
+      # Github Cli Settings
+      - ~/.config/gh:/home/node/.config/gh:cached
+    working_dir: /workspace
+    # Keep the container running
+    command: sleep infinity
+    #extra_hosts:
+    #  - "host.docker.internal:host-gateway"
