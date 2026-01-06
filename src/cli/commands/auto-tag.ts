@@ -29,9 +29,9 @@ interface VersionComponents {
  * Tag configuration from project.toml
  */
 interface TagConfig {
-  major_labels: string[];
-  minor_labels: string[];
-  patch_labels: string[];
+  majorLabels: string[];
+  minorLabels: string[];
+  patchLabels: string[];
 }
 
 /**
@@ -163,9 +163,9 @@ function getIncrementType(
   label: string,
   config: TagConfig,
 ): 'MAJOR' | 'MINOR' | 'PATCH' | 'RC_ONLY' {
-  if (config.major_labels.includes(label)) return 'MAJOR';
-  if (config.minor_labels.includes(label)) return 'MINOR';
-  if (config.patch_labels.includes(label)) return 'PATCH';
+  if (config.majorLabels.includes(label)) return 'MAJOR';
+  if (config.minorLabels.includes(label)) return 'MINOR';
+  if (config.patchLabels.includes(label)) return 'PATCH';
   return 'RC_ONLY';
 }
 
@@ -268,9 +268,9 @@ async function getLatestTag(): Promise<string | null> {
  */
 async function loadConfig(configPath: string): Promise<TagConfig> {
   const defaults: TagConfig = {
-    major_labels: ['release'],
-    minor_labels: ['feature'],
-    patch_labels: ['bugfix', 'fix', 'patch', 'hotfix'],
+    majorLabels: ['release'],
+    minorLabels: ['feature'],
+    patchLabels: ['bugfix', 'fix', 'patch', 'hotfix'],
   };
 
   try {
@@ -278,10 +278,11 @@ async function loadConfig(configPath: string): Promise<TagConfig> {
     const config = parseToml(content);
 
     if (config.tag) {
+      // TOML uses snake_case, convert to camelCase internally
       return {
-        major_labels: (config.tag.major_labels as string[]) || defaults.major_labels,
-        minor_labels: (config.tag.minor_labels as string[]) || defaults.minor_labels,
-        patch_labels: (config.tag.patch_labels as string[]) || defaults.patch_labels,
+        majorLabels: (config.tag.major_labels as string[]) || defaults.majorLabels,
+        minorLabels: (config.tag.minor_labels as string[]) || defaults.minorLabels,
+        patchLabels: (config.tag.patch_labels as string[]) || defaults.patchLabels,
       };
     }
   } catch {
