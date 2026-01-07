@@ -46,6 +46,23 @@ interface AutoTagResult {
   targetBranch: string;
   isDevelopToMain: boolean;
   error?: string;
+  context?: {
+    sourceBranch: string;
+    configPath: string;
+  };
+}
+
+/**
+ * Log a debug message to stderr (to not interfere with JSON output on stdout)
+ *
+ * @param message - Message to log
+ * @param verbose - Whether verbose mode is enabled
+ * @param jsonOutput - Whether JSON output mode is enabled
+ */
+function debugLog(message: string, verbose: boolean, jsonOutput: boolean): void {
+  if (verbose && !jsonOutput) {
+    console.error(colors.muted(`[DEBUG] ${message}`));
+  }
 }
 
 /**
@@ -296,58 +313,70 @@ async function loadConfig(configPath: string): Promise<TagConfig> {
  * Action handler for the auto-tag command
  */
 async function autoTagAction(ctx: CommandContext): Promise<void> {
-  const sourceBranch = ctx.flags['source-branch'] as string | undefined;
-  const targetBranch = ctx.flags['target-branch'] as string | undefined;
-  const configPath = (ctx.flags['config'] as string) || '.github/project.toml';
-  const jsonOutput = ctx.flags['json'] as boolean | undefined;
-  const dryRun = ctx.flags['dry-run'] as boolean | undefined;
-
-  // Validate required flags
-  if (!sourceBranch) {
-    const error = 'Error: --source-branch is required';
-    if (jsonOutput) {
-      console.log(JSON.stringify({ success: false, error }));
-    } else {
-      console.error(colors.error(error));
-    }
-    Deno.exit(1);
-  }
-
-  if (!targetBranch) {
-    const error = 'Error: --target-branch is required';
-    if (jsonOutput) {
-      console.log(JSON.stringify({ success: false, error }));
-    } else {
-      console.error(colors.error(error));
-    }
-    Deno.exit(1);
-  }
-
-  // Type narrowing: after validation, these are guaranteed to be strings
-  const source: string = sourceBranch;
-  const target: string = targetBranch;
+  // Initialize flags with defaults - these are used in error handling
+  let jsonOutput = false;
+  let verbose = false;
+  let sourceBranch: string | undefined;
+  let targetBranch: string | undefined;
+  let configPath = '.github/project.toml';
 
   try {
+    // Extract flags
+    sourceBranch = ctx.flags['source-branch'] as string | undefined;
+    targetBranch = ctx.flags['target-branch'] as string | undefined;
+    configPath = (ctx.flags['config'] as string) || '.github/project.toml';
+    jsonOutput = (ctx.flags['json'] as boolean) ?? false;
+    verbose = (ctx.flags['verbose'] as boolean) ?? false;
+    const dryRun = (ctx.flags['dry-run'] as boolean) ?? false;
+
+    debugLog('Starting auto-tag command', verbose, jsonOutput);
+    debugLog(`Flags: source-branch="${sourceBranch}", target-branch="${targetBranch}", config="${configPath}", json=${jsonOutput}, dry-run=${dryRun}`, verbose, jsonOutput);
+
+    // Validate required flags
+    if (!sourceBranch) {
+      throw new Error('--source-branch is required');
+    }
+
+    if (!targetBranch) {
+      throw new Error('--target-branch is required');
+    }
+
+    // Type narrowing: after validation, these are guaranteed to be strings
+    const source: string = sourceBranch;
+    const target: string = targetBranch;
+
+    debugLog(`Source branch: "${source}"`, verbose, jsonOutput);
+    debugLog(`Target branch: "${target}"`, verbose, jsonOutput);
+
     // Load configuration
+    debugLog(`Loading config from: ${configPath}`, verbose, jsonOutput);
     const config = await loadConfig(configPath);
+    debugLog(`Config loaded: majorLabels=${JSON.stringify(config.majorLabels)}, minorLabels=${JSON.stringify(config.minorLabels)}, patchLabels=${JSON.stringify(config.patchLabels)}`, verbose, jsonOutput);
 
     // Get latest tag
+    debugLog('Getting latest git tag...', verbose, jsonOutput);
     const latestTag = await getLatestTag();
+    debugLog(`Latest tag: ${latestTag ?? '(none)'}`, verbose, jsonOutput);
 
     // Parse current version
     const currentVersion = parseVersion(latestTag);
+    debugLog(`Parsed version: ${JSON.stringify(currentVersion)}`, verbose, jsonOutput);
 
     // Check if this is a develop -> main merge
     const isDevelopToMain = target === 'main' && source === 'develop';
+    debugLog(`Is develop→main merge: ${isDevelopToMain}`, verbose, jsonOutput);
 
     // Extract label from source branch
     const label = extractLabel(source);
+    debugLog(`Extracted label: "${label}"`, verbose, jsonOutput);
 
     // Get increment type
     const incrementType = getIncrementType(label, config);
+    debugLog(`Increment type: ${incrementType}`, verbose, jsonOutput);
 
     // Calculate new version
     const newTag = calculateNewVersion(currentVersion, incrementType, target, isDevelopToMain);
+    debugLog(`Calculated new tag: ${newTag}`, verbose, jsonOutput);
 
     const result: AutoTagResult = {
       success: true,
@@ -379,6 +408,7 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
 
     // Create tag if not dry run
     if (!dryRun) {
+      debugLog(`Creating annotated tag: ${newTag}`, verbose, jsonOutput);
       const tagMessage = `Release ${newTag}`;
       const createCommand = new Deno.Command('git', {
         args: ['tag', '-a', newTag, '-m', tagMessage],
@@ -388,11 +418,17 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
 
       const { code: createCode, stderr: createStderr } = await createCommand.output();
       if (createCode !== 0) {
-        const errorMsg = new TextDecoder().decode(createStderr);
+        const errorMsg = new TextDecoder().decode(createStderr).trim();
+        debugLog(`git tag failed with code ${createCode}: ${errorMsg}`, verbose, jsonOutput);
+        if (errorMsg.includes('already exists')) {
+          throw new Error(`Tag ${newTag} already exists. Delete it first or use a different version.`);
+        }
         throw new Error(`Failed to create tag: ${errorMsg}`);
       }
+      debugLog('Tag created successfully', verbose, jsonOutput);
 
       // Push tag
+      debugLog(`Pushing tag to origin: ${newTag}`, verbose, jsonOutput);
       const pushCommand = new Deno.Command('git', {
         args: ['push', 'origin', newTag],
         stdout: 'piped',
@@ -401,20 +437,48 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
 
       const { code: pushCode, stderr: pushStderr } = await pushCommand.output();
       if (pushCode !== 0) {
-        const errorMsg = new TextDecoder().decode(pushStderr);
+        const errorMsg = new TextDecoder().decode(pushStderr).trim();
+        debugLog(`git push failed with code ${pushCode}: ${errorMsg}`, verbose, jsonOutput);
+        if (errorMsg.includes('Could not resolve host') || errorMsg.includes('Connection refused')) {
+          throw new Error(`Network error while pushing tag: ${errorMsg}`);
+        }
         throw new Error(`Failed to push tag: ${errorMsg}`);
       }
+      debugLog('Tag pushed successfully', verbose, jsonOutput);
 
       if (!jsonOutput) {
         console.log(colors.success(`✓ Tag ${newTag} created and pushed`));
       }
+    } else {
+      debugLog('Dry run mode - skipping tag creation', verbose, jsonOutput);
     }
+
+    debugLog('Auto-tag command completed successfully', verbose, jsonOutput);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    debugLog(`Error occurred: ${errorMessage}`, verbose, jsonOutput);
+
     if (jsonOutput) {
-      console.log(JSON.stringify({ success: false, error: errorMessage }));
+      const errorResult: AutoTagResult = {
+        success: false,
+        currentTag: null,
+        newTag: null,
+        label: '',
+        incrementType: 'PATCH',
+        targetBranch: targetBranch ?? '',
+        isDevelopToMain: false,
+        error: errorMessage,
+        context: {
+          sourceBranch: sourceBranch ?? '',
+          configPath,
+        },
+      };
+      console.log(JSON.stringify(errorResult));
     } else {
       console.error(colors.error(`\n❌ Error: ${errorMessage}\n`));
+      if (sourceBranch || targetBranch) {
+        console.error(colors.muted(`Context: source-branch="${sourceBranch ?? ''}", target-branch="${targetBranch ?? ''}", config="${configPath}"`));
+      }
     }
     Deno.exit(1);
   }
@@ -470,6 +534,11 @@ export const autoTagCommand: Command = {
       short: 'n',
       long: 'dry-run',
       description: 'Calculate version without creating tag',
+    },
+    {
+      short: 'V',
+      long: 'verbose',
+      description: 'Enable verbose output for debugging (writes to stderr)',
     },
   ],
   action: autoTagAction,
