@@ -23,6 +23,11 @@ import {
 } from '../../lib/github-project.ts';
 
 /**
+ * Source of where an issue number was extracted from
+ */
+type IssueSource = 'branch' | 'body';
+
+/**
  * Result of the pr-status operation
  */
 interface PrStatusResult {
@@ -34,6 +39,8 @@ interface PrStatusResult {
   newStatus: string;
   isDraft: boolean;
   skippedDraft: boolean;
+  /** Map of issue number to extraction source (branch or body) */
+  issueSource?: Record<number, IssueSource>;
   error?: string;
   context?: {
     repo: string;
@@ -292,7 +299,7 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
       return;
     }
 
-    // Extract issue numbers
+    // Extract issue numbers and track their sources
     debugLog(`Extracting issues from branch: ${branch}`, verbose, jsonOutput);
     const branchIssues = extractFromBranch(branch, prConfig.branchPattern);
     debugLog(`Issues from branch: ${branchIssues.join(', ') || 'none'}`, verbose, jsonOutput);
@@ -301,8 +308,19 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
     const bodyIssues = extractFromBody(body);
     debugLog(`Issues from body: ${bodyIssues.join(', ') || 'none'}`, verbose, jsonOutput);
 
+    // Track issue sources (branch takes precedence for duplicates)
+    const issueSourceMap = new Map<number, IssueSource>();
+    for (const issue of branchIssues) {
+      issueSourceMap.set(issue, 'branch');
+    }
+    for (const issue of bodyIssues) {
+      if (!issueSourceMap.has(issue)) {
+        issueSourceMap.set(issue, 'body');
+      }
+    }
+
     // Combine and deduplicate
-    const allIssues = [...new Set([...branchIssues, ...bodyIssues])];
+    const allIssues = [...issueSourceMap.keys()];
     debugLog(`All issues to process: ${allIssues.join(', ') || 'none'}`, verbose, jsonOutput);
 
     if (allIssues.length === 0) {
@@ -315,6 +333,7 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
         newStatus: prConfig.reviewStatus,
         isDraft,
         skippedDraft: false,
+        issueSource: {},
       };
 
       if (jsonOutput) {
@@ -412,8 +431,21 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
       } catch (issueError) {
         const errorMsg = issueError instanceof Error ? issueError.message : String(issueError);
         debugLog(`Error processing Issue #${issueNumber}: ${errorMsg}`, verbose, jsonOutput);
-        failedIssues.push(issueNumber);
+
+        // Check if error is "not found" - treat as skipped, not failed
+        if (errorMsg.includes('not found')) {
+          debugLog(`Issue #${issueNumber} not found, adding to skipped`, verbose, jsonOutput);
+          skippedIssues.push(issueNumber);
+        } else {
+          failedIssues.push(issueNumber);
+        }
       }
+    }
+
+    // Convert issueSourceMap to plain object for JSON output
+    const issueSource: Record<number, IssueSource> = {};
+    for (const [issue, source] of issueSourceMap) {
+      issueSource[issue] = source;
     }
 
     const result: PrStatusResult = {
@@ -425,6 +457,7 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
       newStatus: prConfig.reviewStatus,
       isDraft,
       skippedDraft: false,
+      issueSource,
     };
 
     // Output
@@ -442,6 +475,12 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
       if (processedIssues.length > 0) {
         console.log(
           `  ${colors.success('✓')} ${processedIssues.map((i) => `#${i}`).join(', ')}`,
+        );
+      }
+      if (skippedIssues.length > 0) {
+        console.log(`${colors.muted('Skipped:')} ${skippedIssues.length} issues (not found)`);
+        console.log(
+          `  ${colors.warn('⚠')} ${skippedIssues.map((i) => `#${i}`).join(', ')}`,
         );
       }
       if (failedIssues.length > 0) {
