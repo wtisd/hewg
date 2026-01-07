@@ -15,20 +15,80 @@ A versatile CLI framework for Deno.
 
 ## Installation
 
+### Run without Installation (Recommended for Quick Start)
+
+You can run hewg directly from GitHub without any installation:
+
+```bash
+# Show help
+deno run --allow-read --allow-env \
+  https://raw.githubusercontent.com/wtisd/hewg/develop/src/main.ts --help
+
+# Run hello command
+deno run --allow-read --allow-env \
+  https://raw.githubusercontent.com/wtisd/hewg/develop/src/main.ts hello World
+
+# Run setup-actions command (requires --allow-write for file generation)
+deno run --allow-read --allow-env --allow-write \
+  https://raw.githubusercontent.com/wtisd/hewg/develop/src/main.ts setup-actions
+```
+
+#### Required Permissions
+
+| Permission      | Description                   | Required For              |
+| --------------- | ----------------------------- | ------------------------- |
+| `--allow-read`  | Read configuration files      | All commands              |
+| `--allow-env`   | Access environment variables  | All commands              |
+| `--allow-write` | Generate files                | `setup-actions` command   |
+| `--allow-net`   | Network access for GitHub API | `link-issue`, `pr-status` |
+
+#### Command Examples
+
+```bash
+# Basic commands (read-only)
+HEWG_URL="https://raw.githubusercontent.com/wtisd/hewg/develop/src/main.ts"
+
+# Show version
+deno run --allow-read --allow-env $HEWG_URL version
+
+# Show version as JSON
+deno run --allow-read --allow-env $HEWG_URL version --json
+
+# Greeting with options
+deno run --allow-read --allow-env $HEWG_URL hello --loud --count 3
+
+# Setup GitHub Actions (generates files)
+deno run --allow-read --allow-env --allow-write $HEWG_URL setup-actions
+```
+
 ### As a module
 
 ```ts
 import { createCli } from 'jsr:@erdtree/hewg';
 ```
 
-### As a CLI tool
+### Compile to binary
 
 ```bash
-# Run directly
-deno run --allow-read --allow-env https://jsr.io/@erdtree/hewg/src/main.ts
+# Clone and compile
+git clone https://github.com/wtisd/hewg.git
+cd hewg
+deno compile --allow-read --allow-env --allow-write --allow-net --output hewg src/main.ts
 
-# Or compile to binary
-deno compile --allow-read --allow-env --output hewg src/main.ts
+# Or use deno task
+deno task compile
+```
+
+### Global Installation
+
+```bash
+# Install globally from GitHub
+deno install -g -n hewg --allow-read --allow-env --allow-write --allow-net \
+  https://raw.githubusercontent.com/wtisd/hewg/develop/src/main.ts
+
+# Now you can use hewg directly
+hewg --help
+hewg setup-actions
 ```
 
 ## Quick Start
@@ -216,14 +276,19 @@ hewg/
 │           ├── hello.ts   # Hello command
 │           └── version.ts # Version command
 ├── tests/
-│   ├── cli_test.ts        # CLI tests
-│   ├── colors_test.ts     # Color utilities tests
-│   ├── commands_test.ts   # Command tests
-│   └── mod_test.ts        # Module export tests
+│   ├── unit/              # Unit tests
+│   │   ├── colors_test.ts
+│   │   ├── commands_test.ts
+│   │   └── mod_test.ts
+│   ├── integration/       # Integration tests
+│   │   ├── cli_test.ts
+│   │   └── ...
+│   └── e2e/               # End-to-end tests
 └── .github/
     └── workflows/
-        ├── ci.yml         # CI workflow
-        └── release.yml    # Release workflow
+        ├── ci-typescript.yml  # CI workflow
+        ├── build.yml          # Build workflow
+        └── release.yml        # Release workflow
 ```
 
 ## GitHub Actions
