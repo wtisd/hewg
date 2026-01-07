@@ -24,391 +24,174 @@ jobs:
     name: Update Issue Status
     runs-on: ubuntu-latest
     environment: project
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Update Issue Status
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run pr-status command
+        id: pr-status
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          # Run hewg pr-status command with JSON output
+          # stdout = JSON result, stderr = Deno messages (displayed in workflow log)
+          set +e  # Temporarily disable exit on error
+
+          # Build command arguments
+          draft_flag=""
+          if [ "${{ github.event.pull_request.draft }}" = "true" ]; then
+            draft_flag="--draft"
+          fi
+
+          # Use heredoc for body to handle special characters
+          body_content='${{ github.event.pull_request.body }}'
+
+          result=$(deno run --allow-read --allow-env --allow-net src/main.ts pr-status \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --branch "${{ github.head_ref }}" \
+            --body "$body_content" \
+            $draft_flag \
+            --config ".github/project.toml" \
+            --json)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          echo "::group::CLI Output"
+          echo "$result"
+          echo "::endgroup::"
+
+          # Check if command succeeded
+          if [ $exit_code -ne 0 ]; then
+            echo "::error::CLI exited with code $exit_code"
+            echo "result=$result" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          # Validate JSON before parsing
+          if ! echo "$result" | jq -e . > /dev/null 2>&1; then
+            echo "::error::Invalid JSON output from CLI"
+            echo "Raw output: $result"
+            exit 1
+          fi
+
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+          # Parse result safely with defaults
+          success=$(echo "$result" | jq -r '.success // "false"')
+          skipped_draft=$(echo "$result" | jq -r '.skippedDraft // "false"')
+
+          # Handle skipped draft case
+          if [ "$skipped_draft" = "true" ]; then
+            echo "::notice::Skipped draft PR (ignore_draft is enabled)"
+            exit 0
+          fi
+
+          if [ "$success" != "true" ]; then
+            error=$(echo "$result" | jq -r '.error // "Unknown error"')
+            context=$(echo "$result" | jq -r '.context // empty')
+            echo "::error::PR-status failed: $error"
+            if [ -n "$context" ]; then
+              echo "Context: $context"
+            fi
+            exit 1
+          fi
+
+          # Extract values for logging/comment
+          echo "processed_issues=$(echo "$result" | jq -r '.processedIssues // [] | map("#" + tostring) | join(", ")')" >> $GITHUB_OUTPUT
+          echo "failed_issues=$(echo "$result" | jq -r '.failedIssues // [] | map("#" + tostring) | join(", ")')" >> $GITHUB_OUTPUT
+          echo "new_status=$(echo "$result" | jq -r '.newStatus // ""')" >> $GITHUB_OUTPUT
+          echo "processed_count=$(echo "$result" | jq -r '.processedIssues | length')" >> $GITHUB_OUTPUT
+          echo "failed_count=$(echo "$result" | jq -r '.failedIssues | length')" >> $GITHUB_OUTPUT
+
+      - name: Log success
+        if: steps.pr-status.outputs.processed_count != '0'
+        run: |
+          echo "✓ Updated status to '${{ steps.pr-status.outputs.new_status }}' for issues: ${{ steps.pr-status.outputs.processed_issues }}"
+          if [ -n "${{ steps.pr-status.outputs.failed_issues }}" ]; then
+            echo "✗ Failed to update: ${{ steps.pr-status.outputs.failed_issues }}"
+          fi
+
+      - name: Comment on PR (no issues found)
+        if: steps.pr-status.outputs.processed_count == '0' && steps.pr-status.outputs.failed_count == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ github.head_ref }}';
+            const prBody = `${{ github.event.pull_request.body }}`;
+            const hasBody = prBody && prBody.trim().length > 0;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                ':information_source: **No linked Issues found**',
+                '',
+                'Could not find Issue numbers in:',
+                `- Branch name: \`${branchName}\``,
+                `- PR body keywords: ${hasBody ? '(none matching)' : '(empty)'}`,
+                '',
+                '**Expected formats**:',
+                '- Branch: `label/author/{issue_number}/title`',
+                '- Keywords: `Closes #N`, `Fixes #N`, `Resolves #N`'
+              ].join('\n')
+            });
+
+      - name: Handle partial failure
+        if: steps.pr-status.outputs.failed_count != '0' && steps.pr-status.outputs.processed_count != '0'
         uses: actions/github-script@v7
         env:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
-            const fs = require('fs');
-
-            // Simple TOML parser for our specific use case
-            function parseToml(content) {
-              const result = { project: {}, defaults: {}, pr: {} };
-              let currentSection = null;
-
-              for (const line of content.split('\n')) {
-                const trimmed = line.trim();
-
-                // Skip empty lines and comments
-                if (!trimmed || trimmed.startsWith('#')) continue;
-
-                // Section header
-                const sectionMatch = trimmed.match(/^\[(\w+)\]$/);
-                if (sectionMatch) {
-                  currentSection = sectionMatch[1];
-                  if (!result[currentSection]) result[currentSection] = {};
-                  continue;
-                }
-
-                // Key-value pair
-                const kvMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/);
-                if (kvMatch && currentSection) {
-                  let value = kvMatch[2].trim();
-                  // Remove quotes from strings
-                  if ((value.startsWith('"') && value.endsWith('"')) ||
-                      (value.startsWith("'") && value.endsWith("'"))) {
-                    value = value.slice(1, -1);
-                  }
-                  // Parse booleans
-                  else if (value === 'true') {
-                    value = true;
-                  }
-                  else if (value === 'false') {
-                    value = false;
-                  }
-                  // Parse numbers
-                  else if (/^\d+$/.test(value)) {
-                    value = parseInt(value, 10);
-                  }
-                  else if (/^\d+\.\d+$/.test(value)) {
-                    value = parseFloat(value);
-                  }
-                  result[currentSection][kvMatch[1]] = value;
-                }
-              }
-
-              return result;
-            }
-
-            // Parse project URL to extract owner and number
-            function parseProjectUrl(url) {
-              const userMatch = url.match(/github\.com\/users\/([^/]+)\/projects\/(\d+)/);
-              if (userMatch) {
-                return { owner: userMatch[1], number: parseInt(userMatch[2], 10), isOrg: false };
-              }
-              const orgMatch = url.match(/github\.com\/orgs\/([^/]+)\/projects\/(\d+)/);
-              if (orgMatch) {
-                return { owner: orgMatch[1], number: parseInt(orgMatch[2], 10), isOrg: true };
-              }
-              throw new Error(`Invalid project URL: ${url}`);
-            }
-
-            // Extract Issue numbers from branch name
-            function extractFromBranch(branchName, pattern) {
-              try {
-                const regex = new RegExp(pattern);
-                const match = branchName.match(regex);
-                if (match && match[1]) {
-                  const num = parseInt(match[1], 10);
-                  if (num > 0) return [num];
-                }
-              } catch (e) {
-                console.log(`Warning: Invalid branch pattern: ${pattern}`);
-              }
-              return [];
-            }
-
-            // Extract Issue numbers from PR body using keywords
-            function extractFromBody(body) {
-              if (!body) return [];
-              const regex = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
-              const issues = [];
-              let match;
-              while ((match = regex.exec(body)) !== null) {
-                const num = parseInt(match[1], 10);
-                if (num > 0 && !issues.includes(num)) {
-                  issues.push(num);
-                }
-              }
-              return issues;
-            }
-
-            // Comment on PR with message
-            async function commentOnPR(message) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body: message
-              });
-            }
-
-            // Comment on PR with error message
-            async function commentError(message, runUrl, processedIssues = [], failedIssues = []) {
-              let body = `:warning: **Failed to update Issue status**\n\n**Error**: ${message}\n\n`;
-
-              if (processedIssues.length > 0) {
-                body += `**Issues processed**: ${processedIssues.map(i => `#${i}`).join(', ')}\n`;
-              }
-              if (failedIssues.length > 0) {
-                body += `**Issues failed**: ${failedIssues.map(i => `#${i}`).join(', ')}\n`;
-              }
-
-              body += `\n**Troubleshooting**:\n- Ensure \`PROJECT_TOKEN\` secret is configured with \`project\` scope\n- Verify the project URL in \`.github/project.toml\`\n- Check that the status option "${config?.pr?.review_status || 'In Review'}" exists in your project\n\n[View workflow run](${runUrl})`;
-
-              await commentOnPR(body);
-            }
-
-            // Comment warning when no Issues found
-            async function commentNoIssuesFound(branchName, prBody) {
-              const body = `:information_source: **No linked Issues found**\n\nCould not find Issue numbers in:\n- Branch name: \`${branchName}\`\n- PR body keywords: ${prBody ? '(none matching)' : '(empty)'}\n\n**Expected formats**:\n- Branch: \`label/author/{issue_number}/title\`\n- Keywords: \`Closes #N\`, \`Fixes #N\`, \`Resolves #N\``;
-
-              await commentOnPR(body);
-            }
-
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            let config;
+            const processed = '${{ steps.pr-status.outputs.processed_issues }}';
+            const failed = '${{ steps.pr-status.outputs.failed_issues }}';
 
-            try {
-              // Read and parse config
-              const configPath = '.github/project.toml';
-              if (!fs.existsSync(configPath)) {
-                throw new Error(`Configuration file not found: ${configPath}`);
-              }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                ':warning: **Partial success updating Issue status**',
+                '',
+                `**Successfully updated**: ${processed}`,
+                `**Failed**: ${failed}`,
+                '',
+                `[View workflow run](${runUrl})`
+              ].join('\n')
+            });
 
-              const configContent = fs.readFileSync(configPath, 'utf8');
-              config = parseToml(configContent);
+      - name: Handle failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
-              if (!config.project?.url) {
-                throw new Error('project.url is required in configuration');
-              }
-
-              // Get PR config with defaults
-              const prConfig = {
-                review_status: config.pr?.review_status || 'In Review',
-                branch_pattern: config.pr?.branch_pattern || '^[^/]+/[^/]+/(\\d+)/.*$',
-                ignore_draft: config.pr?.ignore_draft || false
-              };
-
-              const pr = context.payload.pull_request;
-
-              // Check if Draft PR should be ignored
-              if (prConfig.ignore_draft && pr.draft) {
-                console.log('Skipping Draft PR (ignore_draft is enabled)');
-                return;
-              }
-
-              // Extract Issue numbers
-              const branchName = pr.head.ref;
-              const prBody = pr.body || '';
-
-              const branchIssues = extractFromBranch(branchName, prConfig.branch_pattern);
-              const bodyIssues = extractFromBody(prBody);
-
-              // Combine and deduplicate
-              const allIssues = [...new Set([...branchIssues, ...bodyIssues])];
-
-              console.log(`Branch: ${branchName}`);
-              console.log(`Issues from branch: ${branchIssues.join(', ') || 'none'}`);
-              console.log(`Issues from body: ${bodyIssues.join(', ') || 'none'}`);
-              console.log(`All Issues to process: ${allIssues.join(', ') || 'none'}`);
-
-              if (allIssues.length === 0) {
-                await commentNoIssuesFound(branchName, prBody);
-                console.log('No Issue numbers found, commented on PR');
-                return;
-              }
-
-              // Parse project URL
-              const projectInfo = parseProjectUrl(config.project.url);
-              console.log(`Project: ${projectInfo.owner}/${projectInfo.number}`);
-
-              // Get project ID and fields
-              const projectQuery = projectInfo.isOrg ? `
-                query($owner: String!, $number: Int!) {
-                  organization(login: $owner) {
-                    projectV2(number: $number) {
-                      id
-                      title
-                      fields(first: 20) {
-                        nodes {
-                          ... on ProjectV2Field {
-                            id
-                            name
-                          }
-                          ... on ProjectV2SingleSelectField {
-                            id
-                            name
-                            options {
-                              id
-                              name
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ` : `
-                query($owner: String!, $number: Int!) {
-                  user(login: $owner) {
-                    projectV2(number: $number) {
-                      id
-                      title
-                      fields(first: 20) {
-                        nodes {
-                          ... on ProjectV2Field {
-                            id
-                            name
-                          }
-                          ... on ProjectV2SingleSelectField {
-                            id
-                            name
-                            options {
-                              id
-                              name
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              `;
-
-              const projectResult = await github.graphql(projectQuery, {
-                owner: projectInfo.owner,
-                number: projectInfo.number
-              });
-
-              const project = projectInfo.isOrg
-                ? projectResult.organization?.projectV2
-                : projectResult.user?.projectV2;
-
-              if (!project) {
-                throw new Error(`Project not found: ${config.project.url}`);
-              }
-
-              console.log(`Found project: ${project.title} (${project.id})`);
-
-              // Find Status field and option
-              const statusField = project.fields.nodes.find(f => f.name?.toLowerCase() === 'status');
-              if (!statusField) {
-                throw new Error('Status field not found in project');
-              }
-
-              const statusOption = statusField.options?.find(
-                o => o.name?.toLowerCase() === prConfig.review_status.toLowerCase()
-              );
-              if (!statusOption) {
-                throw new Error(`Status option "${prConfig.review_status}" not found. Available: ${statusField.options?.map(o => o.name).join(', ')}`);
-              }
-
-              console.log(`Status field: ${statusField.id}, Option: ${statusOption.name} (${statusOption.id})`);
-
-              // Process each Issue
-              const processedIssues = [];
-              const failedIssues = [];
-
-              for (const issueNumber of allIssues) {
-                try {
-                  console.log(`\nProcessing Issue #${issueNumber}...`);
-
-                  // Get Issue node ID
-                  const issueResult = await github.rest.issues.get({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: issueNumber
-                  });
-
-                  const issueNodeId = issueResult.data.node_id;
-                  console.log(`Issue node ID: ${issueNodeId}`);
-
-                  // Check if Issue is already in project
-                  const itemsQuery = `
-                    query($projectId: ID!) {
-                      node(id: $projectId) {
-                        ... on ProjectV2 {
-                          items(first: 100) {
-                            nodes {
-                              id
-                              content {
-                                ... on Issue {
-                                  id
-                                  number
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  `;
-
-                  const itemsResult = await github.graphql(itemsQuery, { projectId: project.id });
-                  const items = itemsResult.node?.items?.nodes || [];
-                  let projectItem = items.find(item => item.content?.number === issueNumber);
-
-                  if (!projectItem) {
-                    // Add Issue to project
-                    console.log(`Issue #${issueNumber} not in project, adding...`);
-
-                    const addResult = await github.graphql(`
-                      mutation($projectId: ID!, $contentId: ID!) {
-                        addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-                          item {
-                            id
-                          }
-                        }
-                      }
-                    `, {
-                      projectId: project.id,
-                      contentId: issueNodeId
-                    });
-
-                    projectItem = { id: addResult.addProjectV2ItemById.item.id };
-                    console.log(`Added Issue #${issueNumber} to project, item ID: ${projectItem.id}`);
-                  } else {
-                    console.log(`Issue #${issueNumber} already in project, item ID: ${projectItem.id}`);
-                  }
-
-                  // Update Status
-                  await github.graphql(`
-                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
-                      updateProjectV2ItemFieldValue(
-                        input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value}}
-                      ) { projectV2Item { id } }
-                    }
-                  `, {
-                    projectId: project.id,
-                    itemId: projectItem.id,
-                    fieldId: statusField.id,
-                    value: statusOption.id
-                  });
-
-                  console.log(`Updated Issue #${issueNumber} status to: ${prConfig.review_status}`);
-                  processedIssues.push(issueNumber);
-
-                } catch (issueError) {
-                  console.error(`Error processing Issue #${issueNumber}: ${issueError.message}`);
-                  failedIssues.push(issueNumber);
-                }
-              }
-
-              // Summary
-              console.log(`\n=== Summary ===`);
-              console.log(`Processed: ${processedIssues.length} issues`);
-              console.log(`Failed: ${failedIssues.length} issues`);
-
-              if (failedIssues.length > 0 && processedIssues.length > 0) {
-                // Partial success
-                await commentOnPR(`:warning: **Partial success updating Issue status**\n\n**Successfully updated**: ${processedIssues.map(i => `#${i}`).join(', ')}\n**Failed**: ${failedIssues.map(i => `#${i}`).join(', ')}\n\n[View workflow run](${runUrl})`);
-              } else if (failedIssues.length > 0) {
-                // All failed
-                await commentError('Failed to process all Issues', runUrl, [], failedIssues);
-                core.setFailed('Failed to process all Issues');
-              } else {
-                console.log('All Issues processed successfully');
-              }
-
-            } catch (error) {
-              console.error(`Error: ${error.message}`);
-              await commentError(error.message, runUrl);
-              core.setFailed(error.message);
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                ':warning: **Failed to update Issue status**',
+                '',
+                '**Troubleshooting**:',
+                '- Ensure `PROJECT_TOKEN` secret is configured with `project` scope',
+                '- Verify the project URL in `.github/project.toml`',
+                '- Check that the status option exists in your project',
+                '',
+                `[View workflow run](${runUrl})`
+              ].join('\n')
+            });

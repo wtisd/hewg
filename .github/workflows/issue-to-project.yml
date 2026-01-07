@@ -20,321 +20,97 @@ jobs:
     name: Add Issue to Project
     runs-on: ubuntu-latest
     environment: project
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Add Issue to Project
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run link-issue command
+        id: link-issue
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          # Run hewg link-issue command with JSON output
+          # stdout = JSON result, stderr = Deno messages (displayed in workflow log)
+          set +e  # Temporarily disable exit on error
+          result=$(deno run --allow-read --allow-env --allow-net src/main.ts link-issue \
+            --issue-number "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --config ".github/project.toml" \
+            --json)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          echo "::group::CLI Output"
+          echo "$result"
+          echo "::endgroup::"
+
+          # Check if command succeeded
+          if [ $exit_code -ne 0 ]; then
+            echo "::error::CLI exited with code $exit_code"
+            echo "result=$result" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          # Validate JSON before parsing
+          if ! echo "$result" | jq -e . > /dev/null 2>&1; then
+            echo "::error::Invalid JSON output from CLI"
+            echo "Raw output: $result"
+            exit 1
+          fi
+
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+          # Parse result safely with defaults
+          success=$(echo "$result" | jq -r '.success // "false"')
+          if [ "$success" != "true" ]; then
+            error=$(echo "$result" | jq -r '.error // "Unknown error"')
+            context=$(echo "$result" | jq -r '.context // empty')
+            echo "::error::Link-issue failed: $error"
+            if [ -n "$context" ]; then
+              echo "Context: $context"
+            fi
+            exit 1
+          fi
+
+          # Extract values for logging
+          echo "project_title=$(echo "$result" | jq -r '.projectTitle // ""')" >> $GITHUB_OUTPUT
+          echo "project_item_id=$(echo "$result" | jq -r '.projectItemId // ""')" >> $GITHUB_OUTPUT
+          echo "fields_set=$(echo "$result" | jq -r '.fieldsSet // [] | join(", ")')" >> $GITHUB_OUTPUT
+
+      - name: Log success
+        run: |
+          echo "✓ Issue #${{ github.event.issue.number }} added to project: ${{ steps.link-issue.outputs.project_title }}"
+          echo "  Item ID: ${{ steps.link-issue.outputs.project_item_id }}"
+          echo "  Fields set: ${{ steps.link-issue.outputs.fields_set }}"
+
+      - name: Handle failure
+        if: failure()
         uses: actions/github-script@v7
         env:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
-            const fs = require('fs');
-
-            // Simple TOML parser for our specific use case
-            function parseToml(content) {
-              const result = { project: {}, defaults: {} };
-              let currentSection = null;
-
-              for (const line of content.split('\n')) {
-                const trimmed = line.trim();
-
-                // Skip empty lines and comments
-                if (!trimmed || trimmed.startsWith('#')) continue;
-
-                // Section header
-                const sectionMatch = trimmed.match(/^\[(\w+)\]$/);
-                if (sectionMatch) {
-                  currentSection = sectionMatch[1];
-                  if (!result[currentSection]) result[currentSection] = {};
-                  continue;
-                }
-
-                // Key-value pair
-                const kvMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/);
-                if (kvMatch && currentSection) {
-                  let value = kvMatch[2].trim();
-                  // Remove quotes from strings
-                  if ((value.startsWith('"') && value.endsWith('"')) ||
-                      (value.startsWith("'") && value.endsWith("'"))) {
-                    value = value.slice(1, -1);
-                  }
-                  // Parse numbers
-                  else if (/^\d+$/.test(value)) {
-                    value = parseInt(value, 10);
-                  }
-                  else if (/^\d+\.\d+$/.test(value)) {
-                    value = parseFloat(value);
-                  }
-                  result[currentSection][kvMatch[1]] = value;
-                }
-              }
-
-              return result;
-            }
-
-            // Parse project URL to extract owner and number
-            function parseProjectUrl(url) {
-              const userMatch = url.match(/github\.com\/users\/([^/]+)\/projects\/(\d+)/);
-              if (userMatch) {
-                return { owner: userMatch[1], number: parseInt(userMatch[2], 10), isOrg: false };
-              }
-              const orgMatch = url.match(/github\.com\/orgs\/([^/]+)\/projects\/(\d+)/);
-              if (orgMatch) {
-                return { owner: orgMatch[1], number: parseInt(orgMatch[2], 10), isOrg: true };
-              }
-              throw new Error(`Invalid project URL: ${url}`);
-            }
-
-            // Comment on issue with error message
-            async function commentError(message, runUrl) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `:warning: **Failed to add this issue to the project**\n\n**Error**: ${message}\n\n**Troubleshooting**:\n- Ensure \`PROJECT_TOKEN\` secret is configured with \`project\` scope\n- Verify the project URL in \`.github/project.toml\`\n- Check that the token owner has access to the project\n\n[View workflow run](${runUrl})`
-              });
-            }
-
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
-            try {
-              // Read and parse config
-              const configPath = '.github/project.toml';
-              if (!fs.existsSync(configPath)) {
-                throw new Error(`Configuration file not found: ${configPath}`);
-              }
-
-              const configContent = fs.readFileSync(configPath, 'utf8');
-              const config = parseToml(configContent);
-
-              if (!config.project?.url) {
-                throw new Error('project.url is required in configuration');
-              }
-
-              const projectInfo = parseProjectUrl(config.project.url);
-              console.log(`Adding issue to project: ${projectInfo.owner}/${projectInfo.number}`);
-
-              // Get project ID
-              const projectQuery = projectInfo.isOrg ? `
-                query($owner: String!, $number: Int!) {
-                  organization(login: $owner) {
-                    projectV2(number: $number) {
-                      id
-                      title
-                      fields(first: 20) {
-                        nodes {
-                          ... on ProjectV2Field {
-                            id
-                            name
-                          }
-                          ... on ProjectV2SingleSelectField {
-                            id
-                            name
-                            options {
-                              id
-                              name
-                            }
-                          }
-                          ... on ProjectV2IterationField {
-                            id
-                            name
-                            configuration {
-                              iterations {
-                                id
-                                title
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              ` : `
-                query($owner: String!, $number: Int!) {
-                  user(login: $owner) {
-                    projectV2(number: $number) {
-                      id
-                      title
-                      fields(first: 20) {
-                        nodes {
-                          ... on ProjectV2Field {
-                            id
-                            name
-                          }
-                          ... on ProjectV2SingleSelectField {
-                            id
-                            name
-                            options {
-                              id
-                              name
-                            }
-                          }
-                          ... on ProjectV2IterationField {
-                            id
-                            name
-                            configuration {
-                              iterations {
-                                id
-                                title
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              `;
-
-              const projectResult = await github.graphql(projectQuery, {
-                owner: projectInfo.owner,
-                number: projectInfo.number
-              });
-
-              const project = projectInfo.isOrg
-                ? projectResult.organization?.projectV2
-                : projectResult.user?.projectV2;
-
-              if (!project) {
-                throw new Error(`Project not found: ${config.project.url}`);
-              }
-
-              console.log(`Found project: ${project.title} (${project.id})`);
-
-              // Add issue to project
-              const addResult = await github.graphql(`
-                mutation($projectId: ID!, $contentId: ID!) {
-                  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-                    item {
-                      id
-                    }
-                  }
-                }
-              `, {
-                projectId: project.id,
-                contentId: context.payload.issue.node_id
-              });
-
-              const itemId = addResult.addProjectV2ItemById.item.id;
-              console.log(`Added issue to project, item ID: ${itemId}`);
-
-              // Set default field values if configured
-              const defaults = config.defaults || {};
-              const fields = project.fields.nodes;
-
-              // Helper to find field and option
-              function findField(name) {
-                return fields.find(f => f.name?.toLowerCase() === name.toLowerCase());
-              }
-
-              function findOption(field, value) {
-                return field.options?.find(o => o.name?.toLowerCase() === value.toLowerCase());
-              }
-
-              // Set Status
-              if (defaults.status) {
-                const statusField = findField('Status');
-                if (statusField) {
-                  const option = findOption(statusField, defaults.status);
-                  if (option) {
-                    await github.graphql(`
-                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
-                        updateProjectV2ItemFieldValue(
-                          input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value}}
-                        ) { projectV2Item { id } }
-                      }
-                    `, { projectId: project.id, itemId, fieldId: statusField.id, value: option.id });
-                    console.log(`Set Status to: ${defaults.status}`);
-                  } else {
-                    console.log(`Warning: Status option '${defaults.status}' not found`);
-                  }
-                }
-              }
-
-              // Set Priority
-              if (defaults.priority) {
-                const priorityField = findField('Priority');
-                if (priorityField) {
-                  const option = findOption(priorityField, defaults.priority);
-                  if (option) {
-                    await github.graphql(`
-                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
-                        updateProjectV2ItemFieldValue(
-                          input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {singleSelectOptionId: $value}}
-                        ) { projectV2Item { id } }
-                      }
-                    `, { projectId: project.id, itemId, fieldId: priorityField.id, value: option.id });
-                    console.log(`Set Priority to: ${defaults.priority}`);
-                  } else {
-                    console.log(`Warning: Priority option '${defaults.priority}' not found`);
-                  }
-                }
-              }
-
-              // Set Iteration
-              if (defaults.iteration) {
-                const iterationField = findField('Iteration');
-                if (iterationField?.configuration?.iterations) {
-                  const iteration = iterationField.configuration.iterations.find(
-                    i => i.title?.toLowerCase() === defaults.iteration.toLowerCase()
-                  );
-                  if (iteration) {
-                    await github.graphql(`
-                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
-                        updateProjectV2ItemFieldValue(
-                          input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {iterationId: $value}}
-                        ) { projectV2Item { id } }
-                      }
-                    `, { projectId: project.id, itemId, fieldId: iterationField.id, value: iteration.id });
-                    console.log(`Set Iteration to: ${defaults.iteration}`);
-                  } else {
-                    console.log(`Warning: Iteration '${defaults.iteration}' not found`);
-                  }
-                }
-              }
-
-              // Set numeric fields (Size, Estimate)
-              for (const [key, fieldName] of [['size', 'Size'], ['estimate', 'Estimate']]) {
-                if (defaults[key] !== undefined) {
-                  const field = findField(fieldName);
-                  if (field) {
-                    await github.graphql(`
-                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Float!) {
-                        updateProjectV2ItemFieldValue(
-                          input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {number: $value}}
-                        ) { projectV2Item { id } }
-                      }
-                    `, { projectId: project.id, itemId, fieldId: field.id, value: defaults[key] });
-                    console.log(`Set ${fieldName} to: ${defaults[key]}`);
-                  }
-                }
-              }
-
-              // Set date fields
-              for (const [key, fieldName] of [['start_date', 'Start date'], ['target_date', 'Target date']]) {
-                if (defaults[key]) {
-                  const field = findField(fieldName);
-                  if (field) {
-                    await github.graphql(`
-                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Date!) {
-                        updateProjectV2ItemFieldValue(
-                          input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: {date: $value}}
-                        ) { projectV2Item { id } }
-                      }
-                    `, { projectId: project.id, itemId, fieldId: field.id, value: defaults[key] });
-                    console.log(`Set ${fieldName} to: ${defaults[key]}`);
-                  }
-                }
-              }
-
-              console.log('Successfully added issue to project with default values');
-
-            } catch (error) {
-              console.error(`Error: ${error.message}`);
-              await commentError(error.message, runUrl);
-              core.setFailed(error.message);
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                ':warning: **Failed to add this issue to the project**',
+                '',
+                '**Troubleshooting**:',
+                '- Ensure `PROJECT_TOKEN` secret is configured with `project` scope',
+                '- Verify the project URL in `.github/project.toml`',
+                '- Check that the token owner has access to the project',
+                '',
+                `[View workflow run](${runUrl})`
+              ].join('\n')
+            });
