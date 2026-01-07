@@ -106,20 +106,26 @@ jobs:
           # Extract values for logging/comment
           echo "processed_issues=$(echo "$result" | jq -r '.processedIssues // [] | map("#" + tostring) | join(", ")')" >> $GITHUB_OUTPUT
           echo "failed_issues=$(echo "$result" | jq -r '.failedIssues // [] | map("#" + tostring) | join(", ")')" >> $GITHUB_OUTPUT
+          echo "skipped_issues=$(echo "$result" | jq -r '.skippedIssues // [] | map("#" + tostring) | join(", ")')" >> $GITHUB_OUTPUT
           echo "new_status=$(echo "$result" | jq -r '.newStatus // ""')" >> $GITHUB_OUTPUT
           echo "processed_count=$(echo "$result" | jq -r '.processedIssues | length')" >> $GITHUB_OUTPUT
           echo "failed_count=$(echo "$result" | jq -r '.failedIssues | length')" >> $GITHUB_OUTPUT
+          echo "skipped_count=$(echo "$result" | jq -r '.skippedIssues | length')" >> $GITHUB_OUTPUT
+          echo "issue_source=$(echo "$result" | jq -c '.issueSource // {}')" >> $GITHUB_OUTPUT
 
       - name: Log success
         if: steps.pr-status.outputs.processed_count != '0'
         run: |
           echo "✓ Updated status to '${{ steps.pr-status.outputs.new_status }}' for issues: ${{ steps.pr-status.outputs.processed_issues }}"
+          if [ -n "${{ steps.pr-status.outputs.skipped_issues }}" ]; then
+            echo "⚠ Skipped (not found): ${{ steps.pr-status.outputs.skipped_issues }}"
+          fi
           if [ -n "${{ steps.pr-status.outputs.failed_issues }}" ]; then
             echo "✗ Failed to update: ${{ steps.pr-status.outputs.failed_issues }}"
           fi
 
       - name: Comment on PR (no issues found)
-        if: steps.pr-status.outputs.processed_count == '0' && steps.pr-status.outputs.failed_count == '0'
+        if: steps.pr-status.outputs.processed_count == '0' && steps.pr-status.outputs.failed_count == '0' && steps.pr-status.outputs.skipped_count == '0'
         uses: actions/github-script@v7
         with:
           script: |
@@ -142,6 +148,49 @@ jobs:
                 '- Branch: `label/author/{issue_number}/title`',
                 '- Keywords: `Closes #N`, `Fixes #N`, `Resolves #N`'
               ].join('\n')
+            });
+
+      - name: Warn if all issues skipped
+        if: steps.pr-status.outputs.processed_count == '0' && steps.pr-status.outputs.skipped_count != '0'
+        run: |
+          echo "::warning::All extracted issues were skipped (not found in repository)"
+
+      - name: Comment on PR (issues skipped)
+        if: steps.pr-status.outputs.skipped_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ github.head_ref }}';
+            const processed = '${{ steps.pr-status.outputs.processed_issues }}';
+            const skipped = '${{ steps.pr-status.outputs.skipped_issues }}';
+            const newStatus = '${{ steps.pr-status.outputs.new_status }}';
+            const issueSource = JSON.parse('${{ steps.pr-status.outputs.issue_source }}' || '{}');
+
+            // Build skipped issues with source info
+            const skippedList = skipped.split(', ').filter(Boolean).map(issue => {
+              const num = issue.replace('#', '');
+              const source = issueSource[num] || 'unknown';
+              return `${issue} (not found - extracted from ${source})`;
+            });
+
+            const bodyLines = [':clipboard: **PR Status Update**', ''];
+
+            if (processed) {
+              bodyLines.push(`**:white_check_mark: Updated:** ${processed} → ${newStatus}`);
+            }
+
+            if (skippedList.length > 0) {
+              bodyLines.push(`**:warning: Skipped:**`);
+              skippedList.forEach(item => bodyLines.push(`- ${item}`));
+            }
+
+            bodyLines.push('', `**Source branch:** \`${branchName}\``);
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: bodyLines.join('\n')
             });
 
       - name: Handle partial failure
