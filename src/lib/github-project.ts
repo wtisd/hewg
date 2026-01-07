@@ -7,7 +7,7 @@
  * @module
  */
 
-import { parseProjectUrl, type ParsedProjectUrl } from '../types/project-config.ts';
+import { type ParsedProjectUrl, parseProjectUrl } from '../types/project-config.ts';
 
 /**
  * Project field type enumeration
@@ -520,4 +520,4 @@ export function findIteration(field: ProjectField, title: string): IterationOpti
 }
 
 // Re-export parseProjectUrl for convenience
-export { parseProjectUrl, type ParsedProjectUrl };
+export { type ParsedProjectUrl, parseProjectUrl };

@@ -5,13 +5,13 @@
 
 ## Phase Overview
 
-| Phase | Description | Dependencies |
-|-------|-------------|--------------|
-| 1 | Create GitHub Project API module | None |
-| 2 | Implement link-issue command | Phase 1 |
-| 3 | Implement pr-status command | Phase 1 |
-| 4 | Update workflow files | Phase 2, 3 |
-| 5 | Testing and validation | Phase 4 |
+| Phase | Description                      | Dependencies |
+| ----- | -------------------------------- | ------------ |
+| 1     | Create GitHub Project API module | None         |
+| 2     | Implement link-issue command     | Phase 1      |
+| 3     | Implement pr-status command      | Phase 1      |
+| 4     | Update workflow files            | Phase 2, 3   |
+| 5     | Testing and validation           | Phase 4      |
 
 ## Phase 1: GitHub Project API Module
 

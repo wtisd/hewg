@@ -109,13 +109,13 @@ hewg link-issue \
 
 #### Flags
 
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--issue-number` | `-i` | Yes | - | Issue number to add to project |
-| `--repo` | `-r` | Yes | - | Repository in owner/repo format |
-| `--config` | `-c` | No | `.github/project.toml` | Path to config file |
-| `--json` | `-j` | No | false | Output result as JSON |
-| `--verbose` | `-v` | No | false | Enable verbose logging |
+| Flag             | Short | Required | Default                | Description                     |
+| ---------------- | ----- | -------- | ---------------------- | ------------------------------- |
+| `--issue-number` | `-i`  | Yes      | -                      | Issue number to add to project  |
+| `--repo`         | `-r`  | Yes      | -                      | Repository in owner/repo format |
+| `--config`       | `-c`  | No       | `.github/project.toml` | Path to config file             |
+| `--json`         | `-j`  | No       | false                  | Output result as JSON           |
+| `--verbose`      | `-v`  | No       | false                  | Enable verbose logging          |
 
 #### JSON Output Schema
 
@@ -167,16 +167,16 @@ hewg pr-status \
 
 #### Flags
 
-| Flag | Short | Required | Default | Description |
-|------|-------|----------|---------|-------------|
-| `--pr-number` | `-p` | Yes | - | Pull request number |
-| `--repo` | `-r` | Yes | - | Repository in owner/repo format |
-| `--branch` | `-b` | Yes | - | Source branch name |
-| `--body` | - | No | - | PR body text |
-| `--draft` | `-d` | No | false | Whether PR is a draft |
-| `--config` | `-c` | No | `.github/project.toml` | Path to config file |
-| `--json` | `-j` | No | false | Output result as JSON |
-| `--verbose` | `-v` | No | false | Enable verbose logging |
+| Flag          | Short | Required | Default                | Description                     |
+| ------------- | ----- | -------- | ---------------------- | ------------------------------- |
+| `--pr-number` | `-p`  | Yes      | -                      | Pull request number             |
+| `--repo`      | `-r`  | Yes      | -                      | Repository in owner/repo format |
+| `--branch`    | `-b`  | Yes      | -                      | Source branch name              |
+| `--body`      | -     | No       | -                      | PR body text                    |
+| `--draft`     | `-d`  | No       | false                  | Whether PR is a draft           |
+| `--config`    | `-c`  | No       | `.github/project.toml` | Path to config file             |
+| `--json`      | `-j`  | No       | false                  | Output result as JSON           |
+| `--verbose`   | `-v`  | No       | false                  | Enable verbose logging          |
 
 #### JSON Output Schema
 
@@ -258,14 +258,14 @@ ignore_draft = false
 
 ### Error Types
 
-| Error | Exit Code | Handling |
-|-------|-----------|----------|
-| Config file not found | 1 | Return error in JSON, workflow comments on issue |
-| Invalid project URL | 1 | Return error in JSON |
-| Issue not found | 1 | Return error in JSON |
-| Project not found | 1 | Return error in JSON |
-| API authentication failed | 1 | Return error in JSON |
-| Field option not found | 0 | Log warning, continue with other fields |
+| Error                     | Exit Code | Handling                                         |
+| ------------------------- | --------- | ------------------------------------------------ |
+| Config file not found     | 1         | Return error in JSON, workflow comments on issue |
+| Invalid project URL       | 1         | Return error in JSON                             |
+| Issue not found           | 1         | Return error in JSON                             |
+| Project not found         | 1         | Return error in JSON                             |
+| API authentication failed | 1         | Return error in JSON                             |
+| Field option not found    | 0         | Log warning, continue with other fields          |
 
 ### Error Output Format
 
@@ -285,6 +285,7 @@ ignore_draft = false
 Environment variable: `PROJECT_TOKEN`
 
 Required scopes:
+
 - `project` - For GitHub Project access
 - `repo` - For issue/PR access (usually included)
 

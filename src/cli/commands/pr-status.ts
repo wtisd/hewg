@@ -380,7 +380,11 @@ async function prStatusAction(ctx: CommandContext): Promise<void> {
           // Add issue to project
           debugLog(`Issue #${issueNumber} not in project, adding...`, verbose, jsonOutput);
           itemId = await addIssueToProject(project.id, issueNodeId, token);
-          debugLog(`Added Issue #${issueNumber} to project, item ID: ${itemId}`, verbose, jsonOutput);
+          debugLog(
+            `Added Issue #${issueNumber} to project, item ID: ${itemId}`,
+            verbose,
+            jsonOutput,
+          );
         } else {
           debugLog(
             `Issue #${issueNumber} already in project, item ID: ${itemId}`,
