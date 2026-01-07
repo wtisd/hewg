@@ -178,6 +178,35 @@ export function getGitHubToken(): string {
 export async function getProject(projectUrl: string, token: string): Promise<Project> {
   const projectInfo = parseProjectUrl(projectUrl);
 
+  // Common field fragments for all project field types
+  const fieldFragments = `
+    ... on ProjectV2Field {
+      id
+      name
+      dataType
+    }
+    ... on ProjectV2SingleSelectField {
+      id
+      name
+      dataType
+      options {
+        id
+        name
+      }
+    }
+    ... on ProjectV2IterationField {
+      id
+      name
+      dataType
+      configuration {
+        iterations {
+          id
+          title
+        }
+      }
+    }
+  `;
+
   const query = projectInfo.isOrg
     ? `
       query($owner: String!, $number: Int!) {
@@ -187,28 +216,7 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
             title
             fields(first: 50) {
               nodes {
-                ... on ProjectV2Field {
-                  id
-                  name
-                }
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options {
-                    id
-                    name
-                  }
-                }
-                ... on ProjectV2IterationField {
-                  id
-                  name
-                  configuration {
-                    iterations {
-                      id
-                      title
-                    }
-                  }
-                }
+                ${fieldFragments}
               }
             }
           }
@@ -223,28 +231,7 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
             title
             fields(first: 50) {
               nodes {
-                ... on ProjectV2Field {
-                  id
-                  name
-                }
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options {
-                    id
-                    name
-                  }
-                }
-                ... on ProjectV2IterationField {
-                  id
-                  name
-                  configuration {
-                    iterations {
-                      id
-                      title
-                    }
-                  }
-                }
+                ${fieldFragments}
               }
             }
           }
@@ -252,20 +239,23 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
       }
     `;
 
+  interface FieldNode {
+    id: string;
+    name: string;
+    dataType?: ProjectFieldType;
+    options?: Array<{ id: string; name: string }>;
+    configuration?: {
+      iterations: Array<{ id: string; title: string }>;
+    };
+  }
+
   interface ProjectQueryResult {
     organization?: {
       projectV2: {
         id: string;
         title: string;
         fields: {
-          nodes: Array<{
-            id: string;
-            name: string;
-            options?: Array<{ id: string; name: string }>;
-            configuration?: {
-              iterations: Array<{ id: string; title: string }>;
-            };
-          }>;
+          nodes: FieldNode[];
         };
       };
     };
@@ -274,14 +264,7 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
         id: string;
         title: string;
         fields: {
-          nodes: Array<{
-            id: string;
-            name: string;
-            options?: Array<{ id: string; name: string }>;
-            configuration?: {
-              iterations: Array<{ id: string; title: string }>;
-            };
-          }>;
+          nodes: FieldNode[];
         };
       };
     };
@@ -305,6 +288,7 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
     .map((f) => ({
       id: f.id,
       name: f.name,
+      type: f.dataType,
       options: f.options,
       iterations: f.configuration?.iterations,
     }));
