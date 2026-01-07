@@ -38,6 +38,7 @@ jobs:
         id: pr-status
         env:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           # Run hewg pr-status command with JSON output
           # stdout = JSON result, stderr = Deno messages (displayed in workflow log)
@@ -49,14 +50,13 @@ jobs:
             draft_flag="--draft"
           fi
 
-          # Use heredoc for body to handle special characters
-          body_content='${{ github.event.pull_request.body }}'
+          # PR_BODY is passed via environment variable to handle special characters safely
 
           result=$(deno run --allow-read --allow-env --allow-net src/main.ts pr-status \
             --pr-number "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}" \
             --branch "${{ github.head_ref }}" \
-            --body "$body_content" \
+            --body "$PR_BODY" \
             $draft_flag \
             --config ".github/project.toml" \
             --json)
@@ -130,7 +130,8 @@ jobs:
         with:
           script: |
             const branchName = '${{ github.head_ref }}';
-            const prBody = `${{ github.event.pull_request.body }}`;
+            // Use toJSON() to safely escape special characters in PR body
+            const prBody = ${{ toJSON(github.event.pull_request.body) }};
             const hasBody = prBody && prBody.trim().length > 0;
 
             await github.rest.issues.createComment({
