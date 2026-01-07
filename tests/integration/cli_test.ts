@@ -4,8 +4,8 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { createCli } from '../src/cli/mod.ts';
-import type { Command } from '../src/cli/types.ts';
+import { createCli } from '../../src/cli/mod.ts';
+import type { Command } from '../../src/cli/types.ts';
 
 describe('Cli', () => {
   describe('createCli', () => {

@@ -4,7 +4,7 @@
 
 import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { _internals } from '../src/cli/commands/auto-tag.ts';
+import { _internals } from '../../src/cli/commands/auto-tag.ts';
 
 const { parseVersion, extractLabel, getIncrementType, calculateNewVersion, parseToml } = _internals;
 

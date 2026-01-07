@@ -3,7 +3,7 @@
  */
 
 import { assertEquals, assertStringIncludes } from '@std/assert';
-import * as colors from '../src/cli/colors.ts';
+import * as colors from '../../src/cli/colors.ts';
 
 // ANSI color codes for verification
 const ANSI = {

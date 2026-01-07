@@ -4,7 +4,7 @@
 
 import { assertEquals, assertThrows } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { parseProjectUrl, validateProjectConfig } from '../src/types/project-config.ts';
+import { parseProjectUrl, validateProjectConfig } from '../../src/types/project-config.ts';
 
 describe('parseProjectUrl', () => {
   it('should parse user project URLs', () => {
