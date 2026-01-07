@@ -9,6 +9,8 @@
 import { createCli } from './cli/mod.ts';
 import { autoTagCommand } from './cli/commands/auto-tag.ts';
 import { helloCommand } from './cli/commands/hello.ts';
+import { linkIssueCommand } from './cli/commands/link-issue.ts';
+import { prStatusCommand } from './cli/commands/pr-status.ts';
 import { setupActionsCommand } from './cli/commands/setup-actions.ts';
 import { versionCommand } from './cli/commands/version.ts';
 
@@ -21,6 +23,8 @@ const cli = createCli({
 // Register built-in commands
 cli.register(autoTagCommand);
 cli.register(helloCommand);
+cli.register(linkIssueCommand);
+cli.register(prStatusCommand);
 cli.register(setupActionsCommand);
 cli.register(versionCommand);
 
