@@ -16,6 +16,7 @@ import {
   findField,
   findIteration,
   findOption,
+  getCurrentIteration,
   getGitHubToken,
   getIssueNodeId,
   getProject,
@@ -59,6 +60,8 @@ interface DefaultsConfig {
   estimate?: number;
   startDate?: string;
   targetDate?: string;
+  useCurrentIteration?: boolean;
+  useCurrentDate?: boolean;
 }
 
 /**
@@ -155,6 +158,8 @@ async function loadConfig(
     defaults.estimate = config.defaults.estimate as number | undefined;
     defaults.startDate = config.defaults.start_date as string | undefined;
     defaults.targetDate = config.defaults.target_date as string | undefined;
+    defaults.useCurrentIteration = config.defaults.use_current_iteration as boolean | undefined;
+    defaults.useCurrentDate = config.defaults.use_current_date as boolean | undefined;
   }
 
   return {
@@ -320,14 +325,40 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
       }
     }
 
-    // Set Iteration
-    if (defaults.iteration) {
+    // Set Iteration (static value takes priority over dynamic)
+    if (defaults.iteration || defaults.useCurrentIteration) {
       const iterationField = findField(project.fields, 'Iteration');
       if (iterationField) {
         if (iterationField.iterations && iterationField.iterations.length > 0) {
-          const iteration = findIteration(iterationField, defaults.iteration);
+          let iteration;
+          let iterationSource: string = '';
+
+          if (defaults.iteration) {
+            // Static iteration specified - use it
+            iteration = findIteration(iterationField, defaults.iteration);
+            iterationSource = defaults.iteration;
+            if (!iteration) {
+              const availableIterations = iterationField.iterations.map((i) => i.title).join(', ');
+              addWarning(
+                'Iteration',
+                `Iteration '${defaults.iteration}' not found. Available: ${availableIterations}`,
+                defaults.iteration,
+              );
+            }
+          } else if (defaults.useCurrentIteration) {
+            // Use current iteration based on date
+            iteration = getCurrentIteration(iterationField);
+            iterationSource = iteration?.title ?? 'current';
+            if (!iteration) {
+              addWarning(
+                'Iteration',
+                'Could not determine current iteration (no iterations with date info)',
+              );
+            }
+          }
+
           if (iteration) {
-            debugLog(`Setting Iteration to: ${defaults.iteration}`, verbose, jsonOutput);
+            debugLog(`Setting Iteration to: ${iterationSource}`, verbose, jsonOutput);
             await updateItemField(
               {
                 projectId: project.id,
@@ -338,19 +369,20 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
               token,
             );
             fieldsSet.push('Iteration');
-          } else {
-            const availableIterations = iterationField.iterations.map((i) => i.title).join(', ');
-            addWarning(
-              'Iteration',
-              `Iteration '${defaults.iteration}' not found. Available: ${availableIterations}`,
-              defaults.iteration,
-            );
           }
         } else {
-          addWarning('Iteration', 'Field has no iterations configured', defaults.iteration);
+          addWarning(
+            'Iteration',
+            'Field has no iterations configured',
+            defaults.iteration ?? 'use_current_iteration',
+          );
         }
       } else {
-        addWarning('Iteration', 'Field not found in project', defaults.iteration);
+        addWarning(
+          'Iteration',
+          'Field not found in project',
+          defaults.iteration ?? 'use_current_iteration',
+        );
       }
     }
 
@@ -394,23 +426,38 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
       }
     }
 
-    // Set Start date
-    if (defaults.startDate) {
+    // Set Start date (static value takes priority over dynamic)
+    if (defaults.startDate || defaults.useCurrentDate) {
       const startDateField = findField(project.fields, 'Start date');
       if (startDateField) {
-        debugLog(`Setting Start date to: ${defaults.startDate}`, verbose, jsonOutput);
+        let dateValue: string;
+
+        if (defaults.startDate) {
+          // Static date specified - use it
+          dateValue = defaults.startDate;
+        } else {
+          // Use current date (YYYY-MM-DD format)
+          const today = new Date();
+          dateValue = today.toISOString().split('T')[0];
+        }
+
+        debugLog(`Setting Start date to: ${dateValue}`, verbose, jsonOutput);
         await updateItemField(
           {
             projectId: project.id,
             itemId,
             fieldId: startDateField.id,
-            value: { date: defaults.startDate },
+            value: { date: dateValue },
           },
           token,
         );
         fieldsSet.push('Start date');
       } else {
-        addWarning('Start date', 'Field not found in project', defaults.startDate);
+        addWarning(
+          'Start date',
+          'Field not found in project',
+          defaults.startDate ?? 'use_current_date',
+        );
       }
     }
 

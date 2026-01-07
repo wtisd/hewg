@@ -55,4 +55,28 @@ url = "https://github.com/users/testuser/projects/1"
     const result = parseToml(content);
     assertEquals(result.project.url, 'https://github.com/users/testuser/projects/1');
   });
+
+  it('should parse boolean values for dynamic settings', () => {
+    const content = `
+[defaults]
+use_current_iteration = true
+use_current_date = false
+    `;
+    const result = parseToml(content);
+    assertEquals(result.defaults.use_current_iteration, true);
+    assertEquals(result.defaults.use_current_date, false);
+  });
+
+  it('should parse mixed static and dynamic settings', () => {
+    const content = `
+[defaults]
+status = "Planned"
+use_current_iteration = true
+use_current_date = true
+    `;
+    const result = parseToml(content);
+    assertEquals(result.defaults.status, 'Planned');
+    assertEquals(result.defaults.use_current_iteration, true);
+    assertEquals(result.defaults.use_current_date, true);
+  });
 });
