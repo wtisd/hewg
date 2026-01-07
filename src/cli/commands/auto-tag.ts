@@ -398,9 +398,8 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
       isDevelopToMain,
     };
 
-    if (jsonOutput) {
-      console.log(JSON.stringify(result));
-    } else {
+    // Show non-JSON output immediately (JSON output is deferred until after tag creation)
+    if (!jsonOutput) {
       console.log(colors.highlight('\n🏷️  Auto Tag Calculator\n'));
       console.log(`${colors.muted('Current tag:')} ${latestTag || '(none, starting from v0.0.0)'}`);
       console.log(`${colors.muted('Source branch:')} ${source}`);
@@ -465,6 +464,11 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
       }
     } else {
       debugLog('Dry run mode - skipping tag creation', verbose, jsonOutput);
+    }
+
+    // Output JSON only after all operations complete successfully
+    if (jsonOutput) {
+      console.log(JSON.stringify(result));
     }
 
     debugLog('Auto-tag command completed successfully', verbose, jsonOutput);

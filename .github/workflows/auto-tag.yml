@@ -42,17 +42,22 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run auto-tag command
         id: auto-tag
         run: |
           # Run hewg auto-tag command with JSON output
-          # Capture both stdout and exit code, stderr goes to workflow log
+          # stdout = JSON result, stderr = Deno messages (displayed in workflow log)
           set +e  # Temporarily disable exit on error
           result=$(deno run --allow-read --allow-env --allow-run src/main.ts auto-tag \
             --source-branch "${{ github.head_ref }}" \
             --target-branch "${{ github.base_ref }}" \
             --config ".github/project.toml" \
-            --json 2>&1)
+            --json)
           exit_code=$?
           set -e  # Re-enable exit on error
 
