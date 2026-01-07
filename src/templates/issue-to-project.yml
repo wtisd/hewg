@@ -50,38 +50,56 @@ jobs:
           echo "$result"
           echo "::endgroup::"
 
-          # Check if command succeeded
-          if [ $exit_code -ne 0 ]; then
-            echo "::error::CLI exited with code $exit_code"
-            echo "result=$result" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
           # Validate JSON before parsing
           if ! echo "$result" | jq -e . > /dev/null 2>&1; then
             echo "::error::Invalid JSON output from CLI"
             echo "Raw output: $result"
+            echo "result={}" >> $GITHUB_OUTPUT
+            echo "has_warnings=false" >> $GITHUB_OUTPUT
             exit 1
           fi
 
           echo "result=$result" >> $GITHUB_OUTPUT
 
-          # Parse result safely with defaults
-          success=$(echo "$result" | jq -r '.success // "false"')
-          if [ "$success" != "true" ]; then
-            error=$(echo "$result" | jq -r '.error // "Unknown error"')
-            context=$(echo "$result" | jq -r '.context // empty')
-            echo "::error::Link-issue failed: $error"
-            if [ -n "$context" ]; then
-              echo "Context: $context"
-            fi
-            exit 1
-          fi
-
           # Extract values for logging
           echo "project_title=$(echo "$result" | jq -r '.projectTitle // ""')" >> $GITHUB_OUTPUT
           echo "project_item_id=$(echo "$result" | jq -r '.projectItemId // ""')" >> $GITHUB_OUTPUT
           echo "fields_set=$(echo "$result" | jq -r '.fieldsSet // [] | join(", ")')" >> $GITHUB_OUTPUT
+
+          # Check for field warnings (partial success)
+          warnings=$(echo "$result" | jq -r '.fieldWarnings // []')
+          warning_count=$(echo "$result" | jq -r '.fieldWarnings // [] | length')
+          if [ "$warning_count" -gt 0 ]; then
+            echo "has_warnings=true" >> $GITHUB_OUTPUT
+            echo "warning_count=$warning_count" >> $GITHUB_OUTPUT
+            # Format warnings for display
+            warning_details=$(echo "$result" | jq -r '.fieldWarnings[] | "- \(.field): \(.reason)"')
+            echo "warning_details<<EOF" >> $GITHUB_OUTPUT
+            echo "$warning_details" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "::warning::Some fields could not be set ($warning_count warnings)"
+          else
+            echo "has_warnings=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if command succeeded (exit code 0 = full success, exit code 1 with projectItemId = partial success)
+          project_item_id=$(echo "$result" | jq -r '.projectItemId // ""')
+          error=$(echo "$result" | jq -r '.error // ""')
+
+          if [ $exit_code -ne 0 ]; then
+            if [ -n "$project_item_id" ] && [ "$project_item_id" != "null" ]; then
+              # Partial success: issue was added but some fields failed
+              echo "::warning::Issue added to project but some fields could not be set"
+              exit 1  # Still fail to notify user
+            else
+              # Complete failure: issue was not added
+              echo "::error::CLI exited with code $exit_code"
+              if [ -n "$error" ]; then
+                echo "::error::$error"
+              fi
+              exit 1
+            fi
+          fi
 
       - name: Log success
         run: |
@@ -94,17 +112,37 @@ jobs:
         uses: actions/github-script@v7
         env:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          HAS_WARNINGS: ${{ steps.link-issue.outputs.has_warnings }}
+          WARNING_DETAILS: ${{ steps.link-issue.outputs.warning_details }}
+          PROJECT_ITEM_ID: ${{ steps.link-issue.outputs.project_item_id }}
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const hasWarnings = process.env.HAS_WARNINGS === 'true';
+            const warningDetails = process.env.WARNING_DETAILS || '';
+            const projectItemId = process.env.PROJECT_ITEM_ID || '';
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: [
-                ':warning: **Failed to add this issue to the project**',
+            let body;
+            if (hasWarnings && projectItemId) {
+              // Partial success: issue added but some fields failed
+              body = [
+                ':warning: **Issue added to project but some fields could not be set**',
+                '',
+                '**Field warnings**:',
+                warningDetails,
+                '',
+                '**Troubleshooting**:',
+                '- Verify field names in `.github/project.toml` match your GitHub Project fields',
+                '- Check that single-select options exist in your project',
+                '- Ensure iteration names match active iterations',
+                '',
+                `[View workflow run](${runUrl})`
+              ].join('\n');
+            } else {
+              // Complete failure: issue not added
+              body = [
+                ':x: **Failed to add this issue to the project**',
                 '',
                 '**Troubleshooting**:',
                 '- Ensure `PROJECT_TOKEN` secret is configured with `project` scope',
@@ -112,5 +150,12 @@ jobs:
                 '- Check that the token owner has access to the project',
                 '',
                 `[View workflow run](${runUrl})`
-              ].join('\n')
+              ].join('\n');
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
             });

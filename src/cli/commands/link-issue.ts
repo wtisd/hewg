@@ -23,6 +23,15 @@ import {
 } from '../../lib/github-project.ts';
 
 /**
+ * Warning about field setting failure
+ */
+interface FieldWarning {
+  field: string;
+  reason: string;
+  configuredValue?: string;
+}
+
+/**
  * Result of the link-issue operation
  */
 interface LinkIssueResult {
@@ -31,6 +40,7 @@ interface LinkIssueResult {
   projectItemId?: string;
   projectTitle?: string;
   fieldsSet?: string[];
+  fieldWarnings?: FieldWarning[];
   error?: string;
   context?: {
     repo: string;
@@ -219,27 +229,60 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
 
     // Set default field values
     const fieldsSet: string[] = [];
+    const fieldWarnings: FieldWarning[] = [];
+
+    // Helper to add warning
+    const addWarning = (field: string, reason: string, configuredValue?: string) => {
+      fieldWarnings.push({ field, reason, configuredValue });
+      debugLog(
+        `Warning: ${field} - ${reason}${
+          configuredValue ? ` (configured: ${configuredValue})` : ''
+        }`,
+        verbose,
+        jsonOutput,
+      );
+    };
+
+    // Log available fields for debugging
+    debugLog(
+      `Available fields in project: ${
+        project.fields.map((f) => `${f.name}(${f.type || 'unknown'})`).join(', ')
+      }`,
+      verbose,
+      jsonOutput,
+    );
 
     // Set Status
     if (defaults.status) {
       const statusField = findField(project.fields, 'Status');
       if (statusField) {
-        const option = findOption(statusField, defaults.status);
-        if (option) {
-          debugLog(`Setting Status to: ${defaults.status}`, verbose, jsonOutput);
-          await updateItemField(
-            {
-              projectId: project.id,
-              itemId,
-              fieldId: statusField.id,
-              value: { singleSelectOptionId: option.id },
-            },
-            token,
-          );
-          fieldsSet.push('Status');
+        if (statusField.options && statusField.options.length > 0) {
+          const option = findOption(statusField, defaults.status);
+          if (option) {
+            debugLog(`Setting Status to: ${defaults.status}`, verbose, jsonOutput);
+            await updateItemField(
+              {
+                projectId: project.id,
+                itemId,
+                fieldId: statusField.id,
+                value: { singleSelectOptionId: option.id },
+              },
+              token,
+            );
+            fieldsSet.push('Status');
+          } else {
+            const availableOptions = statusField.options.map((o) => o.name).join(', ');
+            addWarning(
+              'Status',
+              `Option '${defaults.status}' not found. Available: ${availableOptions}`,
+              defaults.status,
+            );
+          }
         } else {
-          debugLog(`Warning: Status option '${defaults.status}' not found`, verbose, jsonOutput);
+          addWarning('Status', 'Field has no options configured', defaults.status);
         }
+      } else {
+        addWarning('Status', 'Field not found in project', defaults.status);
       }
     }
 
@@ -247,53 +290,67 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
     if (defaults.priority) {
       const priorityField = findField(project.fields, 'Priority');
       if (priorityField) {
-        const option = findOption(priorityField, defaults.priority);
-        if (option) {
-          debugLog(`Setting Priority to: ${defaults.priority}`, verbose, jsonOutput);
-          await updateItemField(
-            {
-              projectId: project.id,
-              itemId,
-              fieldId: priorityField.id,
-              value: { singleSelectOptionId: option.id },
-            },
-            token,
-          );
-          fieldsSet.push('Priority');
+        if (priorityField.options && priorityField.options.length > 0) {
+          const option = findOption(priorityField, defaults.priority);
+          if (option) {
+            debugLog(`Setting Priority to: ${defaults.priority}`, verbose, jsonOutput);
+            await updateItemField(
+              {
+                projectId: project.id,
+                itemId,
+                fieldId: priorityField.id,
+                value: { singleSelectOptionId: option.id },
+              },
+              token,
+            );
+            fieldsSet.push('Priority');
+          } else {
+            const availableOptions = priorityField.options.map((o) => o.name).join(', ');
+            addWarning(
+              'Priority',
+              `Option '${defaults.priority}' not found. Available: ${availableOptions}`,
+              defaults.priority,
+            );
+          }
         } else {
-          debugLog(
-            `Warning: Priority option '${defaults.priority}' not found`,
-            verbose,
-            jsonOutput,
-          );
+          addWarning('Priority', 'Field has no options configured', defaults.priority);
         }
+      } else {
+        addWarning('Priority', 'Field not found in project', defaults.priority);
       }
     }
 
     // Set Iteration
     if (defaults.iteration) {
       const iterationField = findField(project.fields, 'Iteration');
-      if (iterationField?.iterations) {
-        const iteration = findIteration(iterationField, defaults.iteration);
-        if (iteration) {
-          debugLog(`Setting Iteration to: ${defaults.iteration}`, verbose, jsonOutput);
-          await updateItemField(
-            {
-              projectId: project.id,
-              itemId,
-              fieldId: iterationField.id,
-              value: { iterationId: iteration.id },
-            },
-            token,
-          );
-          fieldsSet.push('Iteration');
+      if (iterationField) {
+        if (iterationField.iterations && iterationField.iterations.length > 0) {
+          const iteration = findIteration(iterationField, defaults.iteration);
+          if (iteration) {
+            debugLog(`Setting Iteration to: ${defaults.iteration}`, verbose, jsonOutput);
+            await updateItemField(
+              {
+                projectId: project.id,
+                itemId,
+                fieldId: iterationField.id,
+                value: { iterationId: iteration.id },
+              },
+              token,
+            );
+            fieldsSet.push('Iteration');
+          } else {
+            const availableIterations = iterationField.iterations.map((i) => i.title).join(', ');
+            addWarning(
+              'Iteration',
+              `Iteration '${defaults.iteration}' not found. Available: ${availableIterations}`,
+              defaults.iteration,
+            );
+          }
         } else {
-          debugLog(
-            `Warning: Iteration '${defaults.iteration}' not found`,
-            verbose,
-            jsonOutput,
-          );
+          addWarning('Iteration', 'Field has no iterations configured', defaults.iteration);
         }
+      } else {
+        addWarning('Iteration', 'Field not found in project', defaults.iteration);
       }
     }
 
@@ -312,6 +369,8 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
           token,
         );
         fieldsSet.push('Size');
+      } else {
+        addWarning('Size', 'Field not found in project', String(defaults.size));
       }
     }
 
@@ -330,6 +389,8 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
           token,
         );
         fieldsSet.push('Estimate');
+      } else {
+        addWarning('Estimate', 'Field not found in project', String(defaults.estimate));
       }
     }
 
@@ -348,6 +409,8 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
           token,
         );
         fieldsSet.push('Start date');
+      } else {
+        addWarning('Start date', 'Field not found in project', defaults.startDate);
       }
     }
 
@@ -366,15 +429,20 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
           token,
         );
         fieldsSet.push('Target date');
+      } else {
+        addWarning('Target date', 'Field not found in project', defaults.targetDate);
       }
     }
 
+    // Determine success based on whether all configured fields were set
+    const hasWarnings = fieldWarnings.length > 0;
     const result: LinkIssueResult = {
-      success: true,
+      success: !hasWarnings, // Only fully successful if no warnings
       issueNumber,
       projectItemId: itemId,
       projectTitle: project.title,
       fieldsSet,
+      fieldWarnings: hasWarnings ? fieldWarnings : undefined,
     };
 
     // Output
@@ -389,11 +457,27 @@ async function linkIssueAction(ctx: CommandContext): Promise<void> {
       if (fieldsSet.length > 0) {
         console.log(`${colors.muted('Fields set:')} ${fieldsSet.join(', ')}`);
       }
+      if (hasWarnings) {
+        console.log();
+        console.log(colors.warn('⚠ Field warnings:'));
+        for (const warning of fieldWarnings) {
+          console.log(colors.warn(`  - ${warning.field}: ${warning.reason}`));
+        }
+      }
       console.log();
-      console.log(colors.success(`✓ Issue #${issueNumber} added to project`));
+      if (hasWarnings) {
+        console.log(colors.warn(`⚠ Issue #${issueNumber} added to project with warnings`));
+      } else {
+        console.log(colors.success(`✓ Issue #${issueNumber} added to project`));
+      }
     }
 
     debugLog('Link-issue command completed successfully', verbose, jsonOutput);
+
+    // Exit with error code if there were warnings (so workflow can detect partial failure)
+    if (hasWarnings) {
+      Deno.exit(1);
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     debugLog(`Error occurred: ${errorMessage}`, verbose, jsonOutput);
