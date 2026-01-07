@@ -4,7 +4,7 @@
 
 import { assertExists } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { createCli, VERSION } from '../src/mod.ts';
+import { createCli, VERSION } from '../../src/mod.ts';
 
 describe('Module Exports', () => {
   describe('createCli', () => {

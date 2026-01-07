@@ -4,7 +4,7 @@
 
 import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { _internals } from '../src/cli/commands/link-issue.ts';
+import { _internals } from '../../src/cli/commands/link-issue.ts';
 
 const { parseToml } = _internals;
 

@@ -4,8 +4,8 @@
 
 import { assertExists, assertStringIncludes } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
-import { helloCommand } from '../src/cli/commands/hello.ts';
-import { versionCommand } from '../src/cli/commands/version.ts';
+import { helloCommand } from '../../src/cli/commands/hello.ts';
+import { versionCommand } from '../../src/cli/commands/version.ts';
 
 describe('Built-in Commands', () => {
   describe('helloCommand', () => {

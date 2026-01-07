@@ -9,7 +9,7 @@ import {
   getCurrentIteration,
   type IterationOption,
   type ProjectField,
-} from '../src/lib/github-project.ts';
+} from '../../src/lib/github-project.ts';
 
 describe('findIteration', () => {
   const mockField: ProjectField = {
