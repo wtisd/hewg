@@ -330,7 +330,11 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     const dryRun = (ctx.flags['dry-run'] as boolean) ?? false;
 
     debugLog('Starting auto-tag command', verbose, jsonOutput);
-    debugLog(`Flags: source-branch="${sourceBranch}", target-branch="${targetBranch}", config="${configPath}", json=${jsonOutput}, dry-run=${dryRun}`, verbose, jsonOutput);
+    debugLog(
+      `Flags: source-branch="${sourceBranch}", target-branch="${targetBranch}", config="${configPath}", json=${jsonOutput}, dry-run=${dryRun}`,
+      verbose,
+      jsonOutput,
+    );
 
     // Validate required flags
     if (!sourceBranch) {
@@ -351,7 +355,13 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     // Load configuration
     debugLog(`Loading config from: ${configPath}`, verbose, jsonOutput);
     const config = await loadConfig(configPath);
-    debugLog(`Config loaded: majorLabels=${JSON.stringify(config.majorLabels)}, minorLabels=${JSON.stringify(config.minorLabels)}, patchLabels=${JSON.stringify(config.patchLabels)}`, verbose, jsonOutput);
+    debugLog(
+      `Config loaded: majorLabels=${JSON.stringify(config.majorLabels)}, minorLabels=${
+        JSON.stringify(config.minorLabels)
+      }, patchLabels=${JSON.stringify(config.patchLabels)}`,
+      verbose,
+      jsonOutput,
+    );
 
     // Get latest tag
     debugLog('Getting latest git tag...', verbose, jsonOutput);
@@ -421,7 +431,9 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
         const errorMsg = new TextDecoder().decode(createStderr).trim();
         debugLog(`git tag failed with code ${createCode}: ${errorMsg}`, verbose, jsonOutput);
         if (errorMsg.includes('already exists')) {
-          throw new Error(`Tag ${newTag} already exists. Delete it first or use a different version.`);
+          throw new Error(
+            `Tag ${newTag} already exists. Delete it first or use a different version.`,
+          );
         }
         throw new Error(`Failed to create tag: ${errorMsg}`);
       }
@@ -439,7 +451,9 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
       if (pushCode !== 0) {
         const errorMsg = new TextDecoder().decode(pushStderr).trim();
         debugLog(`git push failed with code ${pushCode}: ${errorMsg}`, verbose, jsonOutput);
-        if (errorMsg.includes('Could not resolve host') || errorMsg.includes('Connection refused')) {
+        if (
+          errorMsg.includes('Could not resolve host') || errorMsg.includes('Connection refused')
+        ) {
           throw new Error(`Network error while pushing tag: ${errorMsg}`);
         }
         throw new Error(`Failed to push tag: ${errorMsg}`);
@@ -477,7 +491,13 @@ async function autoTagAction(ctx: CommandContext): Promise<void> {
     } else {
       console.error(colors.error(`\n❌ Error: ${errorMessage}\n`));
       if (sourceBranch || targetBranch) {
-        console.error(colors.muted(`Context: source-branch="${sourceBranch ?? ''}", target-branch="${targetBranch ?? ''}", config="${configPath}"`));
+        console.error(
+          colors.muted(
+            `Context: source-branch="${sourceBranch ?? ''}", target-branch="${
+              targetBranch ?? ''
+            }", config="${configPath}"`,
+          ),
+        );
       }
     }
     Deno.exit(1);

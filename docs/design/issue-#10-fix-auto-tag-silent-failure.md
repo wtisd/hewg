@@ -94,9 +94,9 @@ Add caching to avoid fresh downloads on each run:
 
 ```typescript
 interface FlagDefinition {
-  short: 'V',
-  long: 'verbose',
-  description: 'Enable verbose output for debugging',
+  short: 'V';
+  long: 'verbose';
+  description: 'Enable verbose output for debugging';
 }
 ```
 
@@ -179,6 +179,7 @@ log(`Latest tag: ${latestTag ?? '(none)'}`, verbose, jsonOutput);
 #### 3.2 Special Characters in Branch Name
 
 Branch names with `#`, spaces, etc. should work because:
+
 - GitHub Actions properly quotes the value
 - Deno's argument parsing handles quoted strings correctly
 
@@ -221,11 +222,11 @@ if (pushCode !== 0) {
 
 ## File Changes Summary
 
-| File | Changes |
-|------|---------|
-| `src/cli/commands/auto-tag.ts` | Add --verbose flag, improve error handling, add context |
-| `.github/workflows/auto-tag.yml` | Add robust error handling, optional caching |
-| `src/templates/auto-tag.yml` | Same changes as workflow (template for setup command) |
+| File                             | Changes                                                 |
+| -------------------------------- | ------------------------------------------------------- |
+| `src/cli/commands/auto-tag.ts`   | Add --verbose flag, improve error handling, add context |
+| `.github/workflows/auto-tag.yml` | Add robust error handling, optional caching             |
+| `src/templates/auto-tag.yml`     | Same changes as workflow (template for setup command)   |
 
 ## Testing Strategy
 
@@ -242,6 +243,7 @@ if (pushCode !== 0) {
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert the commit
 2. Original behavior is restored
 3. No data loss possible (tags are independent)

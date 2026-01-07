@@ -15,6 +15,7 @@
 3. Add verbose logging throughout the command
 
 **Acceptance Criteria**:
+
 - [ ] `--verbose` or `-V` flag is available
 - [ ] Verbose output goes to stderr (not stdout)
 - [ ] Does not interfere with JSON output
@@ -28,6 +29,7 @@
 3. Add context information to error output
 
 **Acceptance Criteria**:
+
 - [ ] Any error produces valid JSON when `--json` is set
 - [ ] Error messages include context (branch name, config path)
 - [ ] No silent failures
@@ -41,6 +43,7 @@
 3. Add validation for branch names
 
 **Acceptance Criteria**:
+
 - [ ] Clear error message when tag already exists
 - [ ] Clear error message on network failure
 - [ ] Special characters in branch names handled correctly
@@ -56,6 +59,7 @@
 3. Display actual error output on failure
 
 **Changes**:
+
 ```yaml
 run: |
   set +e
@@ -79,6 +83,7 @@ run: |
 ```
 
 **Acceptance Criteria**:
+
 - [ ] Error output is visible in workflow logs
 - [ ] jq failures are handled gracefully
 - [ ] Actual error message is displayed
@@ -96,6 +101,7 @@ Apply same changes as workflow file.
 **File**: `tests/cli/commands/auto-tag.test.ts`
 
 Test functions:
+
 - `parseVersion()` - various version formats
 - `extractLabel()` - branch name parsing
 - `getIncrementType()` - label to increment mapping
@@ -130,13 +136,13 @@ deno test --allow-read --allow-env
 
 ## Commit Strategy
 
-| Commit | Description |
-|--------|-------------|
-| 1 | Add --verbose flag to auto-tag command |
-| 2 | Improve error handling in auto-tag command |
-| 3 | Fix workflow error handling and add stderr capture |
-| 4 | Add unit tests for auto-tag functions |
-| 5 | Add design and workflow documentation |
+| Commit | Description                                        |
+| ------ | -------------------------------------------------- |
+| 1      | Add --verbose flag to auto-tag command             |
+| 2      | Improve error handling in auto-tag command         |
+| 3      | Fix workflow error handling and add stderr capture |
+| 4      | Add unit tests for auto-tag functions              |
+| 5      | Add design and workflow documentation              |
 
 ## Verification Checklist
 
