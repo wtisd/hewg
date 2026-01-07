@@ -62,44 +62,50 @@ ci-typescript.yml
 
 ## Test Classification
 
-| Type | Directory | Scope | Characteristics | Execution Timing |
-|------|-----------|-------|-----------------|------------------|
-| Unit | `tests/unit/` | Single module | Mocks, fast, isolated | Every PR |
-| Integration | `tests/integration/` | Multiple modules | Internal connections | After merge |
-| E2E | `tests/e2e/` | Full system | External APIs, real env | Manual only |
+| Type        | Directory            | Scope            | Characteristics         | Execution Timing |
+| ----------- | -------------------- | ---------------- | ----------------------- | ---------------- |
+| Unit        | `tests/unit/`        | Single module    | Mocks, fast, isolated   | Every PR         |
+| Integration | `tests/integration/` | Multiple modules | Internal connections    | After merge      |
+| E2E         | `tests/e2e/`         | Full system      | External APIs, real env | Manual only      |
 
 ## Trigger Matrix
 
-| Event | check | unit | integration | e2e |
-|-------|:-----:|:----:|:-----------:|:---:|
-| `pull_request` | ✓ | ✓ | - | - |
-| `push` (merge) | ✓ | ✓ | ✓ | - |
-| `workflow_dispatch` | ✓ | ✓ | ✓ | Optional |
+| Event               | check | unit | integration |   e2e    |
+| ------------------- | :---: | :--: | :---------: | :------: |
+| `pull_request`      |   ✓   |  ✓   |      -      |    -     |
+| `push` (merge)      |   ✓   |  ✓   |      ✓      |    -     |
+| `workflow_dispatch` |   ✓   |  ✓   |      ✓      | Optional |
 
 ## Conditional Execution Strategy
 
 ### Integration Tests
+
 ```yaml
 if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 ```
+
 - Runs only on merge or manual dispatch
 - Skipped during PR to reduce CI time
 
 ### E2E Tests
+
 ```yaml
 if: github.event_name == 'workflow_dispatch' && inputs.run_e2e == true
 ```
+
 - Manual trigger only
 - Requires explicit opt-in via `run_e2e` input
 
 ## Coverage Strategy
 
 ### Combined Coverage
+
 - Unit and Integration tests contribute to the same coverage report
 - Coverage artifacts are uploaded from both jobs
 - Final coverage is merged before Codecov upload
 
 ### Coverage Flow
+
 ```
 test-unit (coverage/unit/) ─────┐
                                 ├──▶ merge ──▶ Codecov
@@ -111,32 +117,36 @@ test-integration (coverage/int/)┘
 ### setup-actions.ts Extension
 
 New flag: `--ci`
+
 ```bash
 hewg setup-actions --ci
 ```
 
 Creates:
+
 - `.github/workflows/ci-typescript.yml`
 
 Combined setup:
+
 ```bash
 hewg setup-actions --ci --project-url <url>
 ```
 
 Creates all workflows:
+
 - `issue-to-project.yml`
 - `pr-status-update.yml`
 - `ci-typescript.yml`
 
 ## Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| No build job | Separation of concerns; build is a separate template |
-| E2E manual only | External API dependencies; local execution preferred |
-| Combined coverage | Accurate full codebase coverage measurement |
-| Folder-based test classification | More intuitive than filename conventions |
-| Optional E2E flag | Prevents accidental external API calls |
+| Decision                         | Rationale                                            |
+| -------------------------------- | ---------------------------------------------------- |
+| No build job                     | Separation of concerns; build is a separate template |
+| E2E manual only                  | External API dependencies; local execution preferred |
+| Combined coverage                | Accurate full codebase coverage measurement          |
+| Folder-based test classification | More intuitive than filename conventions             |
+| Optional E2E flag                | Prevents accidental external API calls               |
 
 ## Security Considerations
 

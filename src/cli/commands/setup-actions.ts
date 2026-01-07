@@ -183,7 +183,9 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
     console.log(colors.muted('   - Push to main/develop → runs check + unit tests'));
     console.log(colors.muted('   - Create a PR → runs check + unit tests'));
     console.log(colors.muted('   - Merge PR → runs check + unit + integration tests'));
-    console.log(colors.muted('   - Manual dispatch with run_e2e=true → runs all tests including e2e'));
+    console.log(
+      colors.muted('   - Manual dispatch with run_e2e=true → runs all tests including e2e'),
+    );
     console.log();
     stepNumber++;
 
