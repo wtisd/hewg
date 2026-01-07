@@ -35,6 +35,16 @@ status = "Planned"
 # Target date (YYYY-MM-DD format)
 # target_date = "2026-01-12"
 
+# Dynamic field values (automatically determined at runtime)
+# These are used when static values above are not specified
+
+# Automatically set to current Sprint based on today's date
+# If today is not within any Sprint, uses the closest Sprint
+use_current_iteration = true
+
+# Automatically set to today's date when issue is created
+use_current_date = true
+
 [pr]
 # Pull Request Status Update Configuration
 # These settings control the pr-status-update workflow
