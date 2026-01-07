@@ -32,10 +32,10 @@ GitHub Actions' `toJSON()` function safely serializes values to JSON strings, pr
 
 ### Affected Locations
 
-| Line | Type   | Current                                                | After                                  |
-| ---- | ------ | ------------------------------------------------------ | -------------------------------------- |
-| 53   | Shell  | `body_content='${{ github.event.pull_request.body }}'` | Environment variable with `toJSON()`   |
-| 133  | JS     | `` const prBody = `${{ ... }}` ``                      | `JSON.parse(${{ toJSON(...) }})`       |
+| Line | Type  | Current                                                | After                                |
+| ---- | ----- | ------------------------------------------------------ | ------------------------------------ |
+| 53   | Shell | `body_content='${{ github.event.pull_request.body }}'` | Environment variable with `toJSON()` |
+| 133  | JS    | `` const prBody = `${{ ... }}` ``                      | `JSON.parse(${{ toJSON(...) }})`     |
 
 ### Fix Pattern
 
