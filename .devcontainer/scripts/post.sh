@@ -11,10 +11,16 @@ curl -fsSL https://deno.land/install.sh | sh
 export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-# Add Deno to PATH for future shells
+# Add Deno to PATH for future shells (bashrc for interactive, profile for non-interactive)
 if ! grep -q 'DENO_INSTALL' ~/.bashrc 2>/dev/null; then
   echo 'export DENO_INSTALL="$HOME/.deno"' >> ~/.bashrc
   echo 'export PATH="$DENO_INSTALL/bin:$PATH"' >> ~/.bashrc
+fi
+
+# Also add to ~/.profile for non-interactive shells (e.g., Claude Code)
+if ! grep -q 'DENO_INSTALL' ~/.profile 2>/dev/null; then
+  echo 'export DENO_INSTALL="$HOME/.deno"' >> ~/.profile
+  echo 'export PATH="$DENO_INSTALL/bin:$PATH"' >> ~/.profile
 fi
 
 # Verify Deno installation
