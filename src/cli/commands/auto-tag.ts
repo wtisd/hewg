@@ -543,3 +543,12 @@ export const autoTagCommand: Command = {
   ],
   action: autoTagAction,
 };
+
+// Export internal functions for testing
+export const _internals = {
+  parseVersion,
+  extractLabel,
+  getIncrementType,
+  calculateNewVersion,
+  parseToml,
+};
