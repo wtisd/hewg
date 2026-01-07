@@ -46,19 +46,45 @@ jobs:
         id: auto-tag
         run: |
           # Run hewg auto-tag command with JSON output
+          # Capture both stdout and exit code, stderr goes to workflow log
+          set +e  # Temporarily disable exit on error
           result=$(deno run --allow-read --allow-env --allow-run src/main.ts auto-tag \
             --source-branch "${{ github.head_ref }}" \
             --target-branch "${{ github.base_ref }}" \
             --config ".github/project.toml" \
-            --json)
+            --json 2>&1)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          echo "::group::CLI Output"
+          echo "$result"
+          echo "::endgroup::"
+
+          # Check if command succeeded
+          if [ $exit_code -ne 0 ]; then
+            echo "::error::CLI exited with code $exit_code"
+            echo "result=$result" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          # Validate JSON before parsing
+          if ! echo "$result" | jq -e . > /dev/null 2>&1; then
+            echo "::error::Invalid JSON output from CLI"
+            echo "Raw output: $result"
+            exit 1
+          fi
 
           echo "result=$result" >> $GITHUB_OUTPUT
 
-          # Parse result
-          success=$(echo "$result" | jq -r '.success')
+          # Parse result safely with defaults
+          success=$(echo "$result" | jq -r '.success // "false"')
           if [ "$success" != "true" ]; then
-            error=$(echo "$result" | jq -r '.error')
+            error=$(echo "$result" | jq -r '.error // "Unknown error"')
+            context=$(echo "$result" | jq -r '.context // empty')
             echo "::error::Auto-tag failed: $error"
+            if [ -n "$context" ]; then
+              echo "Context: $context"
+            fi
             exit 1
           fi
 
