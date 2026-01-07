@@ -1,9 +1,10 @@
 /**
- * Setup GitHub Actions command for Issue-to-Project automation
+ * Setup GitHub Actions command for Issue-to-Project automation and CI workflows
  *
  * This command creates the necessary files to:
  * 1. Automatically add new Issues to a GitHub Project when they are created
  * 2. Update Issue status to "In Review" when a Pull Request is opened
+ * 3. (Optional) TypeScript/Deno CI workflow with categorized test execution
  *
  * @module
  */
@@ -66,25 +67,38 @@ async function copyTemplate(
 async function setupActionsAction(ctx: CommandContext): Promise<void> {
   const force = ctx.flags.force as boolean | undefined;
   const projectUrl = ctx.flags['project-url'] as string | undefined;
+  const includeCi = ctx.flags.ci as boolean | undefined;
 
-  console.log(colors.highlight('\n🚀 Setting up GitHub Actions for Issue-to-Project automation\n'));
+  const setupProject = !includeCi || projectUrl !== undefined;
+  const setupCi = includeCi === true;
+
+  if (setupProject) {
+    console.log(
+      colors.highlight('\n🚀 Setting up GitHub Actions for Issue-to-Project automation\n'),
+    );
+  } else {
+    console.log(colors.highlight('\n🚀 Setting up GitHub Actions for CI\n'));
+  }
 
   const workflowDir = '.github/workflows';
   const issueWorkflowPath = join(workflowDir, 'issue-to-project.yml');
   const prWorkflowPath = join(workflowDir, 'pr-status-update.yml');
+  const ciWorkflowPath = join(workflowDir, 'ci.yml');
   const configPath = '.github/project.toml';
 
   // Check for existing files
-  const issueWorkflowExists = await fileExists(issueWorkflowPath);
-  const prWorkflowExists = await fileExists(prWorkflowPath);
-  const configExists = await fileExists(configPath);
+  const issueWorkflowExists = setupProject && (await fileExists(issueWorkflowPath));
+  const prWorkflowExists = setupProject && (await fileExists(prWorkflowPath));
+  const configExists = setupProject && (await fileExists(configPath));
+  const ciWorkflowExists = setupCi && (await fileExists(ciWorkflowPath));
 
-  if (!force && (issueWorkflowExists || prWorkflowExists || configExists)) {
-    const existingFiles: string[] = [];
-    if (issueWorkflowExists) existingFiles.push(issueWorkflowPath);
-    if (prWorkflowExists) existingFiles.push(prWorkflowPath);
-    if (configExists) existingFiles.push(configPath);
+  const existingFiles: string[] = [];
+  if (issueWorkflowExists) existingFiles.push(issueWorkflowPath);
+  if (prWorkflowExists) existingFiles.push(prWorkflowPath);
+  if (configExists) existingFiles.push(configPath);
+  if (ciWorkflowExists) existingFiles.push(ciWorkflowPath);
 
+  if (!force && existingFiles.length > 0) {
     console.log(colors.warn('⚠️  The following files already exist:'));
     for (const file of existingFiles) {
       console.log(colors.muted(`   - ${file}`));
@@ -97,68 +111,120 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
   await ensureDir(workflowDir);
   console.log(colors.success(`✓ Created directory: ${workflowDir}`));
 
-  // Copy workflow templates
-  await copyTemplate('issue-to-project.yml', issueWorkflowPath);
-  console.log(colors.success(`✓ Created workflow: ${issueWorkflowPath}`));
+  const createdWorkflows: string[] = [];
 
-  await copyTemplate('pr-status-update.yml', prWorkflowPath);
-  console.log(colors.success(`✓ Created workflow: ${prWorkflowPath}`));
+  // Copy project workflow templates
+  if (setupProject) {
+    await copyTemplate('issue-to-project.yml', issueWorkflowPath);
+    console.log(colors.success(`✓ Created workflow: ${issueWorkflowPath}`));
+    createdWorkflows.push('issue-to-project.yml - Adds new Issues to Project');
 
-  // Copy and optionally customize config template
-  const replacements: Record<string, string> = {};
-  if (projectUrl) {
-    replacements['https://github.com/users/YOUR_USERNAME/projects/YOUR_PROJECT_NUMBER'] =
-      projectUrl;
+    await copyTemplate('pr-status-update.yml', prWorkflowPath);
+    console.log(colors.success(`✓ Created workflow: ${prWorkflowPath}`));
+    createdWorkflows.push('pr-status-update.yml - Updates Issue status on PR');
+
+    // Copy and optionally customize config template
+    const replacements: Record<string, string> = {};
+    if (projectUrl) {
+      replacements['https://github.com/users/YOUR_USERNAME/projects/YOUR_PROJECT_NUMBER'] =
+        projectUrl;
+    }
+    await copyTemplate('project.toml', configPath, replacements);
+    console.log(colors.success(`✓ Created config: ${configPath}`));
   }
-  await copyTemplate('project.toml', configPath, replacements);
-  console.log(colors.success(`✓ Created config: ${configPath}`));
+
+  // Copy CI workflow template
+  if (setupCi) {
+    await copyTemplate('ci-typescript.yml', ciWorkflowPath);
+    console.log(colors.success(`✓ Created workflow: ${ciWorkflowPath}`));
+    createdWorkflows.push('ci.yml - TypeScript/Deno CI with categorized tests');
+  }
 
   // Print next steps
   console.log(colors.highlight('\n📋 Next Steps:\n'));
 
-  console.log(colors.header('1. Configure PROJECT_TOKEN secret:'));
-  console.log(
-    colors.muted('   - Go to your repository Settings > Secrets and variables > Actions'),
-  );
-  console.log(colors.muted('   - Click "New repository secret"'));
-  console.log(colors.muted('   - Name: PROJECT_TOKEN'));
-  console.log(colors.muted('   - Value: Your Personal Access Token with "project" scope'));
-  console.log();
+  let stepNumber = 1;
 
-  if (!projectUrl) {
-    console.log(colors.header('2. Edit .github/project.toml:'));
-    console.log(colors.muted('   - Update the project URL to your GitHub Project'));
-    console.log(colors.muted('   - Customize default field values and PR settings as needed'));
+  if (setupProject) {
+    console.log(colors.header(`${stepNumber}. Configure PROJECT_TOKEN secret:`));
+    console.log(
+      colors.muted('   - Go to your repository Settings > Secrets and variables > Actions'),
+    );
+    console.log(colors.muted('   - Click "New repository secret"'));
+    console.log(colors.muted('   - Name: PROJECT_TOKEN'));
+    console.log(colors.muted('   - Value: Your Personal Access Token with "project" scope'));
+    console.log();
+    stepNumber++;
+
+    if (!projectUrl) {
+      console.log(colors.header(`${stepNumber}. Edit .github/project.toml:`));
+      console.log(colors.muted('   - Update the project URL to your GitHub Project'));
+      console.log(colors.muted('   - Customize default field values and PR settings as needed'));
+      console.log();
+      stepNumber++;
+    }
+
+    console.log(colors.header(`${stepNumber}. Test the project workflows:`));
+    console.log(colors.muted('   - Create a new Issue → should appear in your GitHub Project'));
+    console.log(
+      colors.muted('   - Create a PR linking the Issue → status should change to "In Review"'),
+    );
+    console.log();
+    stepNumber++;
+  }
+
+  if (setupCi) {
+    console.log(colors.header(`${stepNumber}. Create test directories:`));
+    console.log(colors.muted('   mkdir -p tests/unit tests/integration tests/e2e'));
+    console.log();
+    stepNumber++;
+
+    console.log(colors.header(`${stepNumber}. Test the CI workflow:`));
+    console.log(colors.muted('   - Push to main/develop → runs check + unit tests'));
+    console.log(colors.muted('   - Create a PR → runs check + unit tests'));
+    console.log(colors.muted('   - Merge PR → runs check + unit + integration tests'));
+    console.log(
+      colors.muted('   - Manual dispatch with run_e2e=true → runs all tests including e2e'),
+    );
+    console.log();
+    stepNumber++;
+
+    console.log(colors.header(`${stepNumber}. (Optional) Configure Codecov:`));
+    console.log(colors.muted('   - Add CODECOV_TOKEN secret for private repos'));
+    console.log(colors.muted('   - Coverage is uploaded automatically after tests'));
     console.log();
   }
 
-  console.log(colors.header(`${projectUrl ? '2' : '3'}. Test the workflows:`));
-  console.log(colors.muted('   - Create a new Issue → should appear in your GitHub Project'));
-  console.log(
-    colors.muted('   - Create a PR linking the Issue → status should change to "In Review"'),
-  );
-  console.log();
-
   console.log(colors.success('✅ Setup complete!\n'));
   console.log(colors.muted('Workflows created:'));
-  console.log(colors.muted('  • issue-to-project.yml - Adds new Issues to Project'));
-  console.log(colors.muted('  • pr-status-update.yml - Updates Issue status on PR\n'));
+  for (const workflow of createdWorkflows) {
+    console.log(colors.muted(`  • ${workflow}`));
+  }
+  console.log();
 }
 
 /**
  * Setup-actions command definition
  *
- * Creates GitHub Actions workflow files for automatic Issue-to-Project automation:
+ * Creates GitHub Actions workflow files for automatic Issue-to-Project automation
+ * and/or TypeScript/Deno CI workflow:
  * - issue-to-project.yml: Adds new Issues to Project with default field values
  * - pr-status-update.yml: Updates Issue status to "In Review" when PR is opened
+ * - ci.yml: TypeScript/Deno CI with categorized test execution (with --ci flag)
  *
  * @example
  * ```bash
- * # Basic setup
+ * # Basic setup (project workflows only)
  * deno task setup:actions
  *
  * # With project URL pre-configured
  * deno task setup:actions --project-url https://github.com/users/myuser/projects/1
+ *
+ * # CI workflow only
+ * deno task setup:actions --ci
+ *
+ * # All workflows (project + CI)
+ * deno task setup:actions --ci --project-url https://github.com/users/myuser/projects/1
  *
  * # Force overwrite existing files
  * deno task setup:actions --force
@@ -166,7 +232,7 @@ async function setupActionsAction(ctx: CommandContext): Promise<void> {
  */
 export const setupActionsCommand: Command = {
   name: 'setup-actions',
-  description: 'Setup GitHub Actions for Issue-to-Project automation',
+  description: 'Setup GitHub Actions for Issue-to-Project automation and/or CI',
   aliases: ['setup'],
   flags: [
     {
@@ -179,6 +245,11 @@ export const setupActionsCommand: Command = {
       long: 'project-url',
       description: 'GitHub Project URL to pre-configure',
       takesValue: true,
+    },
+    {
+      short: 'c',
+      long: 'ci',
+      description: 'Include TypeScript/Deno CI workflow with categorized tests',
     },
   ],
   action: setupActionsAction,
