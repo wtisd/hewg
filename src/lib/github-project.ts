@@ -41,6 +41,8 @@ export interface FieldOption {
 export interface IterationOption {
   id: string;
   title: string;
+  startDate?: string;
+  duration?: number;
 }
 
 /**
@@ -202,6 +204,8 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
         iterations {
           id
           title
+          startDate
+          duration
         }
       }
     }
@@ -245,7 +249,7 @@ export async function getProject(projectUrl: string, token: string): Promise<Pro
     dataType?: ProjectFieldType;
     options?: Array<{ id: string; name: string }>;
     configuration?: {
-      iterations: Array<{ id: string; title: string }>;
+      iterations: Array<{ id: string; title: string; startDate?: string; duration?: number }>;
     };
   }
 
@@ -501,6 +505,106 @@ export function findOption(field: ProjectField, name: string): FieldOption | und
  */
 export function findIteration(field: ProjectField, title: string): IterationOption | undefined {
   return field.iterations?.find((i) => i.title.toLowerCase() === title.toLowerCase());
+}
+
+/**
+ * Calculate the end date of an iteration
+ *
+ * @param iteration - Iteration with startDate and duration
+ * @returns End date as Date object, or undefined if missing data
+ */
+function calculateIterationEndDate(iteration: IterationOption): Date | undefined {
+  if (!iteration.startDate || iteration.duration === undefined) {
+    return undefined;
+  }
+  const startDate = new Date(iteration.startDate);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + iteration.duration);
+  return endDate;
+}
+
+/**
+ * Get the current iteration based on today's date
+ *
+ * Finds the iteration where today falls within the startDate to endDate range.
+ * If no current iteration is found, falls back to the closest iteration
+ * (next upcoming or most recent past).
+ *
+ * @param field - Project field with iterations
+ * @param referenceDate - Date to use for comparison (defaults to today)
+ * @returns Current or closest iteration, or undefined if no iterations exist
+ *
+ * @example
+ * ```ts
+ * const iterationField = findField(project.fields, 'Iteration');
+ * const currentIteration = getCurrentIteration(iterationField);
+ * if (currentIteration) {
+ *   console.log(`Current sprint: ${currentIteration.title}`);
+ * }
+ * ```
+ */
+export function getCurrentIteration(
+  field: ProjectField,
+  referenceDate: Date = new Date(),
+): IterationOption | undefined {
+  const iterations = field.iterations;
+  if (!iterations || iterations.length === 0) {
+    return undefined;
+  }
+
+  // Filter iterations with valid date info
+  const iterationsWithDates = iterations.filter(
+    (i) => i.startDate && i.duration !== undefined,
+  );
+
+  if (iterationsWithDates.length === 0) {
+    // No iterations with date info, return the first one as fallback
+    return iterations[0];
+  }
+
+  // Normalize reference date to start of day for consistent comparison
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+
+  // Find iteration where today is within the date range
+  for (const iteration of iterationsWithDates) {
+    const startDate = new Date(iteration.startDate!);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = calculateIterationEndDate(iteration)!;
+    endDate.setHours(0, 0, 0, 0);
+
+    if (today >= startDate && today <= endDate) {
+      return iteration;
+    }
+  }
+
+  // No current iteration found, find the closest one
+  let closestIteration: IterationOption | undefined;
+  let smallestDiff = Infinity;
+
+  for (const iteration of iterationsWithDates) {
+    const startDate = new Date(iteration.startDate!);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = calculateIterationEndDate(iteration)!;
+    endDate.setHours(0, 0, 0, 0);
+
+    // Calculate distance to this iteration
+    let diff: number;
+    if (today < startDate) {
+      // Future iteration - distance to start
+      diff = startDate.getTime() - today.getTime();
+    } else {
+      // Past iteration - distance from end
+      diff = today.getTime() - endDate.getTime();
+    }
+
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      closestIteration = iteration;
+    }
+  }
+
+  return closestIteration;
 }
 
 // Re-export parseProjectUrl for convenience
